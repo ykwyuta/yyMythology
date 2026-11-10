@@ -44,17 +44,12 @@ fn mythology_building_style(nation: usize) -> Option<usize> {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-extern "C" {
-    fn js_copy_mythology_atlas(id: u32, ptr: *mut u8, len: usize) -> u32;
-}
-
 fn mythology_atlases() -> (std::borrow::Cow<'static, [u8]>, std::borrow::Cow<'static, [u8]>) {
     #[cfg(target_arch = "wasm32")]
     {
         let read = |id, len| {
             let mut bytes = vec![0; len];
-            let ok = unsafe { js_copy_mythology_atlas(id, bytes.as_mut_ptr(), len) };
+            let ok = unsafe { crate::platform::js::js_copy_mythology_atlas(id, bytes.as_mut_ptr(), len) };
             assert_eq!(ok, 1, "mythology atlas missing or out of date");
             bytes.into()
         };
