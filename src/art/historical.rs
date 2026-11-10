@@ -1,6 +1,7 @@
 //! Generated period artwork. Slots are normalized at build-authoring time, never at runtime.
 use super::*;
-use crate::world::{GOD_LIMIT, PANTHEONS, UT_MAGE};
+use crate::geo::{AKSUM, CARTHAGE, IFE, KILWA, KUSH, MALI, ZIMBABWE};
+use crate::world::{GOD_LIMIT, PANTHEONS, UT_ARC, UT_CAV, UT_DHOW, UT_INF, UT_MAGE, UT_PUNIC_GALLEY, UT_SAILING_CANOE, UT_WORKER};
 
 const SIZE: usize = 192;
 const CELL: usize = SIZE * SIZE * 4;
@@ -21,9 +22,14 @@ const HEROES_RAW: &[u8] = include_bytes!("../../assets/period/heroes.bgra");
 
 const DIVINE_SIZE: usize = 96;
 const BUILDING_SIZE: usize = 128;
-const BUILDING_STYLES: usize = 12;
+const BUILDING_STYLES: usize = 19;
 const BUILDINGS_PER_STYLE: usize = 6;
-const DIVINE_COUNT: usize = PANTHEONS.len() * GOD_LIMIT + 1; // Last slot is the mage.
+const GOD_COUNT: usize = PANTHEONS.len() * GOD_LIMIT;
+const MAGE_SLOT: usize = 19 * GOD_LIMIT; // Last slot of the original sprite sheets.
+const AFRICAN_UNIT_START: usize = GOD_COUNT + 1;
+const AFRICAN_UNIT_STYLES: usize = 3;
+const AFRICAN_UNITS_PER_STYLE: usize = 5;
+const UNIT_COUNT: usize = AFRICAN_UNIT_START + AFRICAN_UNIT_STYLES * AFRICAN_UNITS_PER_STYLE;
 
 /// Atlas order in assets/mythology/generation.json. Building art follows founding origin.
 fn mythology_building_style(nation: usize) -> Option<usize> {
@@ -40,6 +46,13 @@ fn mythology_building_style(nation: usize) -> Option<usize> {
         17 | 18 | 19 | 49 => Some(9), // Mesopotamian
         46 | 47 => Some(10), // Northern Asian
         21 => Some(11),    // Egyptian
+        CARTHAGE => Some(12),
+        KUSH => Some(13),
+        MALI => Some(14),
+        IFE => Some(15),
+        AKSUM => Some(16),
+        KILWA => Some(17),
+        ZIMBABWE => Some(18),
         _ => None,
     }
 }
@@ -54,7 +67,7 @@ fn mythology_atlases() -> (std::borrow::Cow<'static, [u8]>, std::borrow::Cow<'st
             bytes.into()
         };
         (
-            read(0, DIVINE_COUNT * DIVINE_SIZE * DIVINE_SIZE * 4),
+            read(0, UNIT_COUNT * DIVINE_SIZE * DIVINE_SIZE * 4),
             read(1, BUILDING_STYLES * BUILDINGS_PER_STYLE * BUILDING_SIZE * BUILDING_SIZE * 4),
         )
     }
@@ -126,7 +139,31 @@ impl Art {
     pub fn national_unit(&self, nation: usize, ut: u8, flip: bool) -> Option<&ID2D1Bitmap> {
         use crate::world::udef;
         if ut == UT_MAGE {
-            return self.mythology_unit(DIVINE_COUNT - 1, flip);
+            return self.mythology_unit(MAGE_SLOT, flip);
+        }
+        let regional_unit = match ut {
+            UT_PUNIC_GALLEY => Some(4),
+            UT_SAILING_CANOE => Some(9),
+            UT_DHOW => Some(14),
+            _ => {
+                let style = match nation {
+                    CARTHAGE | KUSH => Some(0),
+                    MALI | IFE => Some(1),
+                    AKSUM | KILWA | ZIMBABWE => Some(2),
+                    _ => None,
+                };
+                let slot = match ut {
+                    UT_WORKER => Some(0),
+                    UT_INF => Some(1),
+                    UT_ARC => Some(2),
+                    UT_CAV => Some(3),
+                    _ => None,
+                };
+                style.zip(slot).map(|(style, slot)| style * AFRICAN_UNITS_PER_STYLE + slot)
+            }
+        };
+        if let Some(index) = regional_unit {
+            return self.mythology_unit(AFRICAN_UNIT_START + index, flip);
         }
         // Unique troops retain their equipment even when recruited by a subject's overlord.
         let c = match ut {
@@ -160,7 +197,10 @@ impl Art {
 
     pub fn summoned_god(&self, god: u8, flip: bool) -> Option<&ID2D1Bitmap> {
         let index = god as usize;
-        (index < DIVINE_COUNT - 1).then(|| self.mythology_unit(index, flip)).flatten()
+        if index >= GOD_COUNT {
+            return None;
+        }
+        self.mythology_unit(index + usize::from(index >= MAGE_SLOT), flip)
     }
 
     /// The hero's homeland determines dress, independently of the summoning nation.
@@ -185,7 +225,7 @@ mod tests {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let (divine, buildings) = mythology_atlases();
-            for (bytes, size, count) in [(divine, DIVINE_SIZE, DIVINE_COUNT), (buildings, BUILDING_SIZE, BUILDING_STYLES * BUILDINGS_PER_STYLE)] {
+            for (bytes, size, count) in [(divine, DIVINE_SIZE, UNIT_COUNT), (buildings, BUILDING_SIZE, BUILDING_STYLES * BUILDINGS_PER_STYLE)] {
                 assert_eq!(bytes.len(), size * size * 4 * count);
                 assert!(bytes.chunks_exact(size * size * 4).all(|cell| cell.iter().skip(3).step_by(4).any(|&alpha| alpha > 128)));
             }

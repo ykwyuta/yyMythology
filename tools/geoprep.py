@@ -1,10 +1,10 @@
-"""Natural Earth (public domain) の海岸線・湖・河川を、ユーラシア用の Rust データに変換する。
+"""Natural Earth (public domain) の海岸線・湖・河川を、ユーラシア・アフリカ用の Rust データに変換する。
 usage: python3 -I geoprep.py <ne_dir> <out.rs>
 """
 import json, sys, math
 
 NE, OUT = sys.argv[1], sys.argv[2]
-LON0, LON1, LAT0, LAT1 = -26.0, 192.0, -12.0, 83.0
+LON0, LON1, LAT0, LAT1 = -26.0, 192.0, -36.0, 83.0
 
 
 def clip(ring, edge):
@@ -95,13 +95,11 @@ countries = json.load(open(f'{NE}/ne_50m_admin_0_countries.geojson', encoding='u
 land_rings = []
 for f in countries['features']:
     props = f['properties']
-    if props['CONTINENT'] not in {'Europe', 'Asia'} and props['ADMIN'] != 'Egypt':
+    if props['CONTINENT'] not in {'Europe', 'Asia', 'Africa'}:
         continue
     geom = f['geometry']
     polygons = geom['coordinates'] if geom['type'] == 'MultiPolygon' else [geom['coordinates']]
     for outer, *_ in polygons:
-        if props['ADMIN'] in {'Spain', 'Portugal'} and max(p[1] for p in outer) < 35.9:
-            continue  # North African territories and Atlantic islands off Africa
         r = [(lon + 360 if lon < -160 else lon, lat) for lon, lat, *_ in outer]
         r = clip_box(r[:-1])
         if len(r) >= 3 and area(r) >= 0.025:
@@ -109,7 +107,9 @@ for f in countries['features']:
 
 LAKES = {'Lake Ladoga', 'Lake Baikal', 'Lake Onega', 'Issyk-Kul', 'Lake Zaysan', 'Khövsgöl Nuur', 'Uvs Nuur', 'Lake Khanka',
          'Qinghai Hu', 'Lake Urmia', 'Hulun Nuur', 'Lake Peipus', 'Tai Hu', 'Poyang Hu', 'Lake Van', 'Lake Sevan',
-         'South Aral Sea', 'North Aral Sea', 'Lake Balkhash', 'Har Us Nuur', 'Khyargas Nuur', 'Alaköl', 'Lake Tuz'}
+         'South Aral Sea', 'North Aral Sea', 'Lake Balkhash', 'Har Us Nuur', 'Khyargas Nuur', 'Alaköl', 'Lake Tuz',
+         'Lake Albert', 'Lake Chad', 'Lake Edward', 'Lake Kivu', 'Lake Malawi', 'Lake Tana',
+         'Lake Tanganyika', 'Lake Turkana', 'Lake Victoria'}
 lakes = json.load(open(f'{NE}/ne_50m_lakes.geojson'))
 lake_rings = []
 seen = set()
@@ -133,6 +133,11 @@ RIV = {
     'Tigris': True, 'Dicle': True, 'Euphrates': True, 'Firat': True, 'Al Furat': True, 'Shatt al Arab': True,
     'Nile': True, 'Rosetta Branch': False, 'Damietta Branch': False, 'Indus': True, 'Ganges': True, 'Hong': False, 'Xi': False,
     'Gan': False, 'Yuan': False, 'Ural': False, 'Tarim': False, 'Daugava': False, 'Neva': False, 'Ob': True, 'Lena': True, 'Yenisey': True, 'Mekong': True, 'Irrawaddy': True,
+    'Niger': True, 'Benue': False, 'Sénégal': True, 'Volta': True, 'Congo': True,
+    'Ubangi': True, 'Kasai': False, 'Lualaba': False, 'Zambezi': True, 'Shire': False,
+    'Limpopo': True, 'Orange': True, 'Okavango': False, 'Jubba': False, 'Omo': False,
+    'Albert Nile': True, 'Victoria Nile': True, 'El Bahr el Abyad': True,
+    'El Bahr el Azraq': True, 'Bahr el Jebel': True, 'Abay': True, 'Atbara': False,
     'Argun’': False, 'Hailar': False, 'Naryn': False, 'Chenab': False, 'Sutlej': False, 'Yamuna': False, 'Jinsha': False,
 }
 rivers = json.load(open(f'{NE}/ne_50m_rivers_lake_centerlines.geojson'))

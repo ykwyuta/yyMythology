@@ -15,7 +15,7 @@ const FAMILIES = [
 ];
 const LANG_CODES = ['ja', 'en', 'zh'];
 const DISPLAY_FAMILIES = ['"Yu Mincho", "Noto Serif JP", serif', 'Georgia, "Times New Roman", serif', '"Noto Serif SC", "SimSun", serif'];
-const TITLES = ['神話大戦 — ユーラシアの覇権', 'Mythology — Conquest of Eurasia', '神话大战 — 欧亚争霸'];
+const TITLES = ['神話大戦 — ユーラシア・アフリカの覇権', 'Mythology — Conquest of Eurasia and Africa', '神话大战 — 欧亚非争霸'];
 const LANG_KEY = 'yymythology.lang';
 // 起動時の言語：URL の ?lang=、保存した設定、ブラウザの言語の順
 function detectLang() {
@@ -943,7 +943,7 @@ async function main() {
   ]);
   const [exports, atlases] = await Promise.all([
     loadWasm(),
-    Promise.all(['divine-v1.bgra', 'buildings-v1.bgra'].map(loadMythologyAtlas)),
+    Promise.all(['divine-v2.bgra', 'buildings-v2.bgra'].map(loadMythologyAtlas)),
     fontWait,
     loadSlotInfo(),
   ]);

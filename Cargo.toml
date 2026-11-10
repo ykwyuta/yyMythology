@@ -2,7 +2,7 @@
 name = "yymythology"
 version = "0.1.0"
 edition = "2021"
-description = "剣と魔法のユーラシアを舞台にしたリアルタイムストラテジー（ブラウザ版：Rust → WebAssembly／Windows 版：Rust + Direct3D11 / Direct2D）"
+description = "剣と魔法のユーラシアとアフリカを舞台にしたリアルタイムストラテジー（ブラウザ版：Rust → WebAssembly／Windows 版：Rust + Direct3D11 / Direct2D）"
 build = "build.rs"
 
 # ゲーム本体。ブラウザ版はこれを wasm（cdylib）にする
