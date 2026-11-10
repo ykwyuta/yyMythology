@@ -3157,14 +3157,14 @@ impl Game {
         // 扁額（両端に少し余白）に収まらなければ一回り小さい書体で書く
         let tf = if self.gfx.measure(title, Font::Title) <= plaque - 8.0 { Font::Title } else { Font::TitleMid };
         self.gfx.text_shadow(title, px, 19.0, 380.0, 56.0, tf, [1.0, 0.86, 0.42, 1.0]);
-        self.gfx.text_shadow(t!("— ユーラシアの覇権 —", "— Conquest of Eurasia —", "— 欧亚争霸 —"), px, 76.0, 380.0, 28.0, Font::BigCenter, [0.96, 0.90, 0.78, 1.0]);
-        self.gfx.text("YYMYTHOLOGY  /  EURASIA", px, 110.0, 380.0, 18.0, Font::NormalCenter, [0.58, 0.73, 0.77, 1.0]);
+        self.gfx.text_shadow(t!("— ユーラシア・アフリカの覇権 —", "— Conquest of Eurasia and Africa —", "— 欧亚非争霸 —"), px, 76.0, 380.0, 28.0, Font::BigCenter, [0.96, 0.90, 0.78, 1.0]);
+        self.gfx.text("YYMYTHOLOGY  /  EURASIA & AFRICA", px, 110.0, 380.0, 18.0, Font::NormalCenter, [0.58, 0.73, 0.77, 1.0]);
 
         let compact = self.gfx.compact;
         if !compact || self.title_sel.is_none() {
         self.art.draw_inset_box(&self.gfx, px + 18.0, 132.0, w - 18.0, 306.0);
         self.gfx.text(
-            t!("剣と魔法が交錯するユーラシア。各地の国々は伝承の神々や天使を召喚し、大陸の覇権を争う。\n\n地図上の都をクリックして、率いる国を選ぼう。", "Swords and magic clash across Eurasia. Each realm summons the gods or angels of its own tradition to compete for supremacy.\n\nClick a capital on the map to choose a realm.", "剑与魔法交织的欧亚大陆。各国召唤自己传说中的神灵或天使，争夺大陆霸权。\n\n点击地图上的都城选择势力。"),
+            t!("剣と魔法が交錯するユーラシアとアフリカ。各地の国々は伝承の神々や天使を召喚し、大陸の覇権を争う。\n\n地図上の都をクリックして、率いる国を選ぼう。", "Swords and magic clash across Eurasia and Africa. Each realm summons the gods or angels of its own tradition to compete for supremacy.\n\nClick a capital on the map to choose a realm.", "剑与魔法交织的欧亚与非洲。各国召唤自己传说中的神灵或天使，争夺大陆霸权。\n\n点击地图上的都城选择势力。"),
             px + 28.0,
             140.0,
             324.0,
@@ -3387,7 +3387,7 @@ impl Game {
         if paused {
             self.gfx.text_shadow(t!("一時停止中（Space）", "Paused (Space)", "已暂停（Space）"), w / 2.0 - 120.0, self.top_h() + 60.0, 240.0, 30.0, Font::BigCenter, [1.0, 1.0, 0.8, 1.0]);
         } else if let Some(left) = self.world.descent_left() {
-            let s = tf!("テングリ降臨：天の軍がユーラシアを統一するまで あと{}年", "Descent of Tengri: {} years until Heaven's army unites Eurasia", "腾格里降临：距天之军统一欧亚还有{}年", left.ceil() as i32);
+            let s = tf!("テングリ降臨：天の軍がユーラシアとアフリカを統一するまで あと{}年", "Descent of Tengri: {} years until Heaven's army unites Eurasia", "腾格里降临：距天之军统一欧亚非还有{}年", left.ceil() as i32);
             self.gfx.text_shadow(&s, w / 2.0 - 320.0, self.top_h() + 60.0, 640.0, 30.0, Font::BigCenter, [1.0, 0.75, 0.35, 1.0]);
         } else if self.cmd_hold() {
             self.gfx.text_shadow(t!("指揮中（時は止まっている。命令を出すか選択を解くと進む）", "Commanding: time stopped (give an order or deselect)", "指挥中（时间已停止。下达命令或取消选择后继续）"), w / 2.0 - 320.0, self.top_h() + 60.0, 640.0, 30.0, Font::BigCenter, [0.8, 0.95, 1.0, 1.0]);
@@ -4312,9 +4312,9 @@ impl Game {
         self.add_button(x0 + pw - 90.0, y0 + 10.0, x0 + pw - 14.0, y0 + 40.0, t!("閉じる", "Close", "关闭"), "", 0, true, Act::CloseOverlay, "");
         self.art.draw_inset_box(&self.gfx, x0 + 14.0, y0 + 46.0, x0 + pw - 14.0, y0 + ph - 14.0);
         let text = t!(
-            "■ 勝利条件\n最後の一国となりユーラシアを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊は自国領内の民を選んで H を押し、民を生贄にして召喚する。\n\n■ 魔法使い\n兵営で訓練する。選択後、ファイヤーボール（Z、1.5秒）またはメテオ（X、4秒）で射程内の敵の位置を狙う。魔法が着弾する前に敵は移動できる。移動や停止で詠唱を中断する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
-            "■ Victory\nUnify Eurasia by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a heroic spirit, select workers in your territory and press H to sacrifice them.\n\n■ Mages\nTrain mages at a barracks. Select them to cast Fireball (Z, 1.5s) or Meteor (X, 4s) at nearby enemy positions. Enemies may move before impact. Move or stop to interrupt casting.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
-            "■ 胜利\n成为最后一个国家以统一欧亚。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民并按 H 献祭，可召唤英灵。\n\n■ 法师\n在兵营训练。选中后可对附近敌人所在位置施放火球术（Z，1.5秒）或陨石术（X，4秒）。敌人可在着弹前移动。移动或停止可中断施法。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
+            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊は自国領内の民を選んで H を押し、民を生贄にして召喚する。\n\n■ 魔法使い\n兵営で訓練する。選択後、ファイヤーボール（Z、1.5秒）またはメテオ（X、4秒）で射程内の敵の位置を狙う。魔法が着弾する前に敵は移動できる。移動や停止で詠唱を中断する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
+            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a heroic spirit, select workers in your territory and press H to sacrifice them.\n\n■ Mages\nTrain mages at a barracks. Select them to cast Fireball (Z, 1.5s) or Meteor (X, 4s) at nearby enemy positions. Enemies may move before impact. Move or stop to interrupt casting.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
+            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民并按 H 献祭，可召唤英灵。\n\n■ 法师\n在兵营训练。选中后可对附近敌人所在位置施放火球术（Z，1.5秒）或陨石术（X，4秒）。敌人可在着弹前移动。移动或停止可中断施法。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
         );
         // 入りきらなければ小さい字にする
         let f = if self.gfx.measure_h(text, Font::Normal, pw - 48.0) > ph - 64.0 { Font::Small } else { Font::Normal };

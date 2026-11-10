@@ -1,4 +1,4 @@
-//! 地理データ（ユーラシアの海岸線・河川・山脈・砂漠）と国家データ、地形生成
+//! 地理データ（ユーラシア・アフリカの海岸線・河川・山脈・砂漠）と国家データ、地形生成
 
 use crate::geodata::{LAKE_RINGS, LAND_RINGS, NE_RIVERS};
 use crate::rng::{fbm, hash2, Rng};
@@ -7,11 +7,11 @@ use crate::rng::{fbm, hash2, Rng};
 pub const MAP_SCALE: usize = 1;
 /// 経度1度あたり5マス、緯度1度あたり6マス（北緯40度付近で縦横がほぼ揃う）
 pub const MAP_W: usize = 1090;
-pub const MAP_H: usize = 570;
+pub const MAP_H: usize = 714;
 pub const LON0: f32 = -26.0;
 pub const LON1: f32 = 192.0;
 pub const LAT_TOP: f32 = 83.0;
-pub const LAT_BOT: f32 = -12.0;
+pub const LAT_BOT: f32 = -36.0;
 
 pub fn ll_to_tile(lon: f32, lat: f32) -> (f32, f32) {
     (
@@ -112,6 +112,12 @@ macro_rules! rg {
     };
 }
 const RANGES: &[Range] = &[
+    // アトラス山脈・エチオピア高原・東アフリカ地溝帯・ドラケンスバーグ
+    rg!(hill 0.68, &[(-9.3, 30.7), (-6.1, 31.4), (-3.6, 32.8), (0.5, 34.3), (5.2, 35.4), (9.2, 36.0)]),
+    rg!(hill 0.95, &[(36.0, 7.3), (37.7, 9.8), (38.3, 12.2), (38.9, 14.6)]),
+    rg!(0.45, &[(37.35, -3.08), (37.30, -3.24)]),
+    rg!(hill 0.72, &[(29.5, -12.8), (31.3, -9.9), (33.1, -6.0), (35.5, -2.0), (36.5, 2.2)]),
+    rg!(hill 0.60, &[(26.4, -32.4), (28.0, -30.5), (29.0, -29.1), (30.7, -26.0)]),
     // ---- 中国
     rg!(0.25, &[(113.3, 34.9), (113.8, 36.0), (113.9, 37.5), (114.5, 39.0), (115.3, 40.0)]), // 太行山
     rg!(0.35, &[(104.5, 34.0), (106.5, 33.9), (108.0, 33.9), (109.5, 33.8), (111.0, 33.6)]), // 秦嶺
@@ -292,7 +298,7 @@ const DESERTS: &[(f32, f32, f32, f32)] = &[
 ];
 
 /// ナイルの谷（砂漠にしない）
-const NILE: &[(f32, f32)] = &[(32.9, 23.0), (32.9, 24.0), (32.7, 26.0), (31.7, 27.2), (30.9, 28.5), (31.2, 30.1)];
+const NILE: &[(f32, f32)] = &[(32.55, 15.60), (33.98, 18.00), (32.30, 19.60), (30.50, 19.20), (30.45, 21.60), (32.9, 23.0), (32.9, 24.0), (32.7, 26.0), (31.7, 27.2), (30.9, 28.5), (31.2, 30.1)];
 
 // ---------------------------------------------------------------- 国家データ
 pub struct NationDef {
@@ -367,6 +373,13 @@ pub const NATIONS: &[NationDef] = &[
     nd!("カムチャツカ", 158.65, 53.03, 1.05, [0.68, 0.72, 0.81], &[(160.85, 56.25)], false, false, "北東アジアの海辺の国"),
     nd!("ギリシャ", 23.73, 37.98, 1.05, [0.26, 0.60, 0.86], &[(22.42, 39.64)], false, false, "オリュンポスの神々を祀る国"),
     nd!("イラン", 51.42, 35.69, 1.05, [0.72, 0.41, 0.27], &[(52.53, 29.59)], false, false, "メソポタミアの神々を召喚する国"),
+    nd!("カルタゴ", 10.27, 36.85, 1.20, [0.63, 0.35, 0.76], &[(7.73, 36.89), (13.19, 32.88)], false, true, "北アフリカの地中海沿岸に港を築くフェニキア系の海洋国家"),
+    nd!("クシュ", 33.72, 16.94, 1.10, [0.79, 0.46, 0.21], &[(31.82, 18.54)], false, false, "メロエを都とし、ナイル中流に栄える王国"),
+    nd!("マリ", -8.4, 11.38, 1.25, [0.85, 0.70, 0.30], &[(-4.55, 13.90), (-3.00, 16.77)], false, true, "ニジェール川流域とサヘルの交易都市を結ぶ西アフリカの帝国"),
+    nd!("イフェ", 4.56, 7.49, 1.05, [0.30, 0.71, 0.42], &[(4.45, 8.95), (3.98, 6.62)], false, false, "西アフリカの森に栄え、オリシャを祀るヨルバの都市王国"),
+    nd!("アクスム", 38.72, 14.13, 1.15, [0.79, 0.40, 0.36], &[(39.61, 15.22)], false, false, "アフリカの角の高地から紅海の港へ広がる王国"),
+    nd!("キルワ", 39.5, -8.93, 1.10, [0.24, 0.69, 0.67], &[(39.66, -4.04), (39.27, -6.15)], false, false, "インド洋の交易を担うスワヒリ海岸の港市国家"),
+    nd!("グレート・ジンバブエ", 30.93, -20.27, 1.10, [0.49, 0.62, 0.32], &[(28.42, -20.16), (29.39, -22.21)], false, false, "南部アフリカの高原に大きな石造囲壁を築く王国"),
 ];
 
 pub const MONGOL: usize = 0;
@@ -403,6 +416,13 @@ pub const NOVGOROD: usize = 30;
 pub const POLAND: usize = 31;
 pub const HUNGARY: usize = 32;
 pub const SOUTHERN_SONG: usize = 33;
+pub const CARTHAGE: usize = 50;
+pub const KUSH: usize = 51;
+pub const MALI: usize = 52;
+pub const IFE: usize = 53;
+pub const AKSUM: usize = 54;
+pub const KILWA: usize = 55;
+pub const ZIMBABWE: usize = 56;
 
 // ---------------------------------------------------------------- 地図
 pub struct Mine {
@@ -510,14 +530,24 @@ pub fn generate_map(seed: u32) -> Map {
                 || in_ell(wlon, wlat, (97.0, 36.8, 4.0, 1.3))
                 || in_ell(wlon, wlat, (108.6, 39.4, 2.4, 1.4))
                 || (wlat > 36.8 && wlat < 40.5 && wlon > 98.0 && wlon < 106.2);
-            if steppe {
+            // 紅海を境に、アフリカ側のサヘルとサバンナを草原として描く。
+            let african = lon >= -26.0 && lon < 52.0 && lat < 37.0
+                && (lat < 12.0 || lon < 33.5 + (30.0 - lat).max(0.0) * 0.47);
+            let savanna = african && ((wlat > 7.0 && wlat < 17.0)
+                || (wlat < -7.0 && wlat > -31.0) || (wlon > 32.0 && wlat < 13.0));
+            if steppe || savanna {
                 t = Terrain::Steppe;
             }
             // 砂漠
             let mut desert = DESERTS.iter().any(|&d| in_ell(wlon, wlat, d));
-            // エジプトの砂漠（ナイルの谷とデルタを除く）
-            if wlat < 31.3 && wlon < 34.8 && (wlon < 33.6 || wlat < 30.0) && dist_poly(lon, lat, NILE) > 0.35 && !in_ell(lon, lat, (31.0, 30.9, 1.25, 0.75)) {
-                desert = true;
+            // サハラの中にもナイルの谷とデルタの細い緑地を残す。
+            if african {
+                let sahara = (16.0..31.7).contains(&wlat)
+                    && dist_poly(lon, lat, NILE) > 0.42
+                    && !in_ell(lon, lat, (31.0, 30.9, 1.25, 0.75));
+                let southern_deserts = in_ell(wlon, wlat, (15.7, -23.2, 2.0, 7.4))
+                    || in_ell(wlon, wlat, (22.4, -25.0, 3.8, 4.0));
+                desert |= sahara || southern_deserts;
             }
             if desert {
                 t = Terrain::Desert;
@@ -562,7 +592,12 @@ pub fn generate_map(seed: u32) -> Map {
             }
             // 森林（北のタイガ、南の照葉樹林、ヨーロッパの森）
             if matches!(t, Terrain::Plain | Terrain::Steppe) {
-                let fthr = if lat > 53.0 || (lat > 50.0 && lon > 122.0) {
+                let fthr = if african && (in_ell(wlon, wlat, (22.4, -1.5, 9.5, 6.0))
+                    || in_ell(wlon, wlat, (-1.5, 5.8, 13.2, 3.4))) {
+                    0.38
+                } else if african && dist_poly(lon, lat, NILE) < 0.42 {
+                    0.52
+                } else if lat > 53.0 || (lat > 50.0 && lon > 122.0) {
                     0.40
                 } else if lat < 32.5 && lon > 95.0 {
                     0.50

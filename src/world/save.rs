@@ -9,7 +9,7 @@ use crate::ai::AiState;
 use crate::save::{RResult, Reader, Writer};
 
 /// 記録形式の版（中身の並びを変えたら上げる）
-pub const SAVE_VERSION: u32 = 1;
+pub const SAVE_VERSION: u32 = 2;
 
 fn bad(what: &str) -> String {
     tf!("記録が壊れている（{}）", "The save is damaged ({})", "存档已损坏（{}）", what)

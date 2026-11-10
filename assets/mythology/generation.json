@@ -4,7 +4,7 @@
     {
       "output": "divine.bgra",
       "sprite_size": 96,
-      "sprite_count": 58,
+      "sprite_count": 85,
       "sheets": [
         {
           "name": "divine-01",
@@ -47,13 +47,32 @@
           "columns": 2,
           "rows": 2,
           "prompt": "Use case stylized-concept. Asset type production-ready transparent sprite atlas for a painterly historical-fantasy real-time strategy game. Each subject is a separate full-body standing game miniature, orthographic front three-quarter view facing slightly right, crisp contour, carefully shaded hand-painted stone-gold Age of Empires-like polish, clear at thumbnail size. Exactly equal grid cells, rows top to bottom and columns left to right. Center each subject within its exact cell with at least 12 percent clear padding on every side, aligned footing, no subject crosses cells. Real transparent alpha throughout spaces, no checkerboard painted into image, no border, no text, no lettering, no ground slab, no detached sparks. Show complete feet, wings, weapon and head. Exactly 2 by 2 grid. Top left: Kutkh, glossy black raven trickster of Kamchatka with broad wings and blue sheen. Top right: Miti, resilient Kamchatkan folklore woman with fur-lined layered outfit and raven-feather detail. Bottom left: Ememkut, youthful Kamchatkan folklore traveler in fur and leather with simple carved walking staff. Bottom right: a distinct fantasy battle mage with purple hooded robe, gold embroidery, crystal-topped staff and tightly contained orange spell flame, readable as wizard at 30 pixels."
+        },
+        {
+          "name": "africa-divine-01",
+          "columns": 3,
+          "rows": 2,
+          "prompt": "A production 2D game sprite atlas, true transparent alpha, of exactly six isolated full-body painted fantasy deities. Use an invisible 3-column by 2-row grid. IMPORTANT: each figure is relatively small and completely surrounded by a broad empty alpha moat on all sides, no adjacent silhouettes nearly touching; generous margins, no overlapping, no shadows, no aura, no backdrop, no gradient, no base. Every sprite must have a fully visible head and feet and be painted with one crisp recognizable silhouette, front three-quarter camera. Top row left to right: Tanit, North African goddess in terracotta robes with a crescent and triangular insignia staff; Baal Hammon, North African bearded deity wearing brown-bronze robes and a ram-horn crown with small solar disc; Melqart, Phoenician guardian in purple and a lion-skin mantle, holding a knotted wooden club. Bottom row left to right: Apedemak, lion-headed Meroitic warrior deity with spear and gold collar; Amun of Napata, ram-headed Kushite deity with blue robes and plumed crown; Sebiumeker, Kushite guardian deity with standing pose, bronze Meroitic regalia and ceremonial staff. No labels, outlines, plates, checkerboards or colored boxes.",
+          "edit_prompt": "Remove the whole brown, black and blue gradient and all shadow or glow around the figures in this exact six-sprite image. Replace the area around each of the six figures with truly transparent alpha, as if each of them had been cut out with a precise mask. Preserve their silhouettes, feet, staffs, garments, colors, all six identities and equal 3 columns by 2 rows layout. Do not add effects. Fully transparent corners, gutters and space around each figure. No blur, tint, vignette, shadow, transparency preview pattern or backdrop. The figures should remain crisp and solid."
+        },
+        {
+          "name": "africa-divine-02",
+          "columns": 3,
+          "rows": 2,
+          "prompt": "Generate a sprite atlas for a painterly historical-fantasy RTS, equal cells in EXACTLY 3 columns by 2 rows, each isolated full-body game miniature, orthographic three-quarter camera, crisp silhouette and warm hand-painted shading, genuine transparent alpha, generous transparent gutters, no lettering or cell dividers, no detached particles or ground slab. Row 1 (Yoruba), left to right: Ṣàngó, thunder orisha with double-headed axe and red woven robes; Ògún, iron and smithing orisha with iron blade, palm fibers and deep green cloth; Ọ̀ṣun, freshwater orisha wearing gold-yellow woven robes and brass ornaments with a bronze fan. Row 2 (Shona traditions, use respectful non-literal fantasy representations): Mwari as a faceless luminous rain-cloud and stone-bird manifestation in storm violet and gold; Nehanda as a dignified woman ancestral guardian spirit in indigo and earthy bronze with a subtle spectral mantle; Chaminuka as a distinguished ancestral guardian spirit with carved wood staff and moss green and umber textiles."
+        },
+        {
+          "name": "africa-units",
+          "columns": 5,
+          "rows": 3,
+          "prompt": "Generate a transparent full-body RTS sprite sheet for historical-fantasy African armies. Exactly 5 equal columns by 3 equal rows, 15 isolated sprites on genuine alpha, ample transparent gutters, consistent painterly isometric three-quarter style, no cell borders, no words, no detached parts or oversized ground base. Columns in every row left to right are villager with basket or tool, infantry with spear and shield, archer carrying a bow, mounted scout on a compact horse, and a fully visible sailing ship on a tiny tightly cropped strip of wake. Row 1: ancient North Africa, Punic/Mediterranean and Nile textiles, linen and bronze, the ship a Punic galley with a tan square sail. Row 2: West Africa Sahel and Yoruba forest kingdom, indigo and ochre woven cloth with patterns specific to the region, practical iron weapons and leather shields, the ship a wooden West African long trading canoe with a simple sail. Row 3: East and southern Africa, subtle Aksumite and eastern African red-brown and ivory cloth, iron spear and leather, the ship a traditional Swahili dhow with an ivory lateen sail. Clear compact silhouettes readable at 35 pixels. Each subject centered, full height, leaves 12% margin on all sides."
         }
       ]
     },
     {
       "output": "buildings.bgra",
       "sprite_size": 128,
-      "sprite_count": 72,
+      "sprite_count": 114,
       "sheets": [
         {
           "name": "buildings-01",
@@ -90,6 +109,31 @@
           "columns": 3,
           "rows": 4,
           "prompt": "Use case stylized-concept. Create a transparent production sprite atlas for a painterly historical fantasy RTS. Exactly 3 columns and 4 equal rows; 12 separate isometric buildings, top-down 3/4 game camera, light from upper left, readable at 44 pixels, hand painted yet crisp Age of Empires game art. Each building is centered with a tight base on the same footing and at least 12% transparent padding all around, no object overlaps cells, no text or cell borders, genuinely transparent alpha. Ports include only a short dock on one edge and no sea tile. Rows 1 and 2 use this unified architectural set: North Asian Siberian and Kamchatkan fantasy, raised log lodges, steep roofs, fur-colored awnings, carved posts, pine wood and rock. Rows 3 and 4 use this different unified architectural set: Ancient Egyptian fantasy, golden sandstone pylons and fluted columns, lapis and gold trim, reed shade structures and Nile palms. EXACT order left-to-right: row 1 first style grand royal CAPITAL, humble TOWN with two attached dwellings, BARRACKS with training yard. Row 2 first style planted FARM with shed, defensive FORT tower and wall, waterfront PORT with dock and warehouse. Row 3 second style grand royal CAPITAL, humble TOWN with two attached dwellings, BARRACKS with training yard. Row 4 second style planted FARM with shed, defensive FORT tower and wall, waterfront PORT with dock and warehouse."
+        },
+        {
+          "name": "africa-buildings-01",
+          "columns": 3,
+          "rows": 4,
+          "prompt": "Generate a production sprite atlas of isometric buildings for a historical-fantasy RTS with painterly stone and wood textures. Each is isolated on genuine transparent alpha with at least 10% transparent padding, no labels, no borders, no people, no crossing cell borders. Orthographic three-quarter view, light from upper left. Exact columns: capital, town, barracks in first row of each style; farm with crop beds, fortified wall and tower, harbor with small dock and storehouse in second row. EXACTLY 3 columns by 4 rows. Rows 1–2 style: Punic Carthage, warm limestone, painted red bands, terracotta, flat-roofed courtyard houses, Phoenician columns; circular military harbor motifs for port. Rows 3–4 style: ancient Kush at Meroë, Nubian sandstone temples and monumental pylons, narrow steep pyramidal accents only on capital, warm sienna and muted gold, irrigation crops by Nile and river dock for port."
+        },
+        {
+          "name": "africa-buildings-02",
+          "columns": 3,
+          "rows": 4,
+          "prompt": "Generate a production sprite atlas of isometric buildings for a historical-fantasy RTS with painterly stone and wood textures. Each is isolated on genuine transparent alpha with at least 10% transparent padding, no labels, no borders, no people, no crossing cell borders. Orthographic three-quarter view, light from upper left. Exact columns: capital, town, barracks in first row of each style; farm with crop beds, fortified wall and tower, harbor with small dock and storehouse in second row. EXACTLY 3 columns by 4 rows. Rows 1–2 style: medieval Mali and Inland Niger Delta, Sudano-Sahelian earthen architecture, stepped mud towers and projecting toron wood beams, ochre adobe compounds, millet fields and Niger river landing. Rows 3–4 style: Yoruba Ife forest kingdom, terracotta and rammed earth courtyard compounds, pitched palm-thatch roofs, carved timber posts, red clay courtyards and rich forest green, produce gardens, small lagoon trading dock."
+        },
+        {
+          "name": "africa-buildings-03",
+          "columns": 3,
+          "rows": 4,
+          "prompt": "Generate a production sprite atlas of isometric buildings for a historical-fantasy RTS with painterly stone and wood textures. Each is isolated on genuine transparent alpha with at least 10% transparent padding, no labels, no borders, no people, no crossing cell borders. Orthographic three-quarter view, light from upper left. Exact columns: capital, town, barracks in first row of each style; farm with crop beds, fortified wall and tower, harbor with small dock and storehouse in second row. EXACTLY 3 columns by 4 rows. Rows 1–2 style: Aksumite highland kingdom of the Horn of Africa, alternating bands of pale stone and wooden beams with projecting beam ends, stepped plinths and carved obelisk near capital, highland grain farm and Red Sea stone quay for port. Rows 3–4 style: medieval Swahili Kilwa, white coral rag masonry, carved wooden doors, shaded verandahs, coconut palm accents, coastal Muslim stone architecture with modest domed details, Indian Ocean timber landing pier for port.",
+          "edit_prompt": "Edit this exact atlas by fully removing the pale background and leaving real, fully transparent alpha around and between all sprites. It is for a game engine which rejects even a faint white backdrop. Preserve exactly all twelve Aksumite and Swahili painted structures, their crisp details, left-to-right column order, four-row placement, dimensions and framing. Keep the foreground cobbles, rocks, plants, docks and tightly attached small water bases. No replacement backdrop, no white or gray pixels outside the buildings, no checkerboard, no outlines or labels. Pixels at each of the four corners and each gap between sprites must be alpha zero."
+        },
+        {
+          "name": "africa-buildings-04",
+          "columns": 3,
+          "rows": 2,
+          "prompt": "Generate a production sprite atlas of isometric buildings for a historical-fantasy RTS with painterly stone and wood textures. Each is isolated on genuine transparent alpha with at least 10% transparent padding, no labels, no borders, no people, no crossing cell borders. Orthographic three-quarter view, light from upper left. Exact columns: capital, town, barracks in first row of each style; farm with crop beds, fortified wall and tower, harbor with small dock and storehouse in second row. EXACTLY 3 columns by 2 rows, one unified style. Great Zimbabwe southern African plateau, curving dry-stacked granite walls without mortar, thatched roundhouses on red soil, monumental round enclosure and conical tower on capital, low round buildings in town, granite walls surrounding barracks, millet plot farm, stepped defensive granite fort, simple timber river landing for port."
         }
       ]
     }

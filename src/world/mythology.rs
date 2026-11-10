@@ -107,12 +107,33 @@ pub const PANTHEONS: &[Pantheon] = &[
         ["ミティ", "Miti", "米蒂"],
         ["エムメムクト", "Ememkut", "埃梅姆库特"],
     ] },
+    Pantheon { name: ["カルタゴの神々", "Punic Carthage", "迦太基诸神"], gods: [
+        ["タニト", "Tanit", "塔尼特"],
+        ["バアル・ハモン", "Baal Hammon", "巴力哈蒙"],
+        ["メルカルト", "Melqart", "梅尔卡特"],
+    ] },
+    Pantheon { name: ["クシュの神々", "Kushite gods", "库施诸神"], gods: [
+        ["アペデマク", "Apedemak", "阿佩德马克"],
+        ["ナパタのアメン", "Amun of Napata", "纳帕塔的阿蒙"],
+        ["セビウメケル", "Sebiumeker", "塞比乌梅克尔"],
+    ] },
+    Pantheon { name: ["ヨルバのオリシャ", "Yoruba orishas", "约鲁巴奥里沙"], gods: [
+        ["シャンゴ", "Ṣàngó", "尚戈"],
+        ["オグン", "Ògún", "奥贡"],
+        ["オシュン", "Ọ̀ṣun", "奥顺"],
+    ] },
+    Pantheon { name: ["ショナの伝承", "Shona traditions", "绍纳传说"], gods: [
+        ["ムワリ", "Mwari", "姆瓦里"],
+        ["ネハンダ", "Nehanda", "内汉达"],
+        ["チャミヌカ", "Chaminuka", "查米努卡"],
+    ] },
 ];
 
 const NATION_PANTHEON: &[u8; NATIONS.len()] = &[
     0, 1, 0, 0, 5, 2, 3, 1, 4, 5, 0, 0, 0, 0, 0, 0, 6,
     7, 7, 7, 8, 9, 10, 8, 11, 10, 0, 0, 12, 12, 12, 12, 10, 1,
     13, 13, 10, 14, 15, 15, 16, 17, 17, 17, 17, 8, 0, 18, 11, 7,
+    19, 20, 8, 21, 10, 8, 22,
 ];
 
 pub fn pantheon(nation: usize) -> usize {

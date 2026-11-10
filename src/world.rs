@@ -2931,7 +2931,7 @@ impl World {
         // 終了判定
         let alive: Vec<usize> = (0..NATIONS.len()).filter(|&i| self.nations[i].alive).collect();
         if alive.as_slice() == [self.player] {
-            self.game_over = Some((true, tf!("{} はユーラシアを統一した！", "{} has unified Eurasia!", "{}统一了欧亚大陆！", tx(self.nations[self.player].name))));
+            self.game_over = Some((true, tf!("{} はユーラシアとアフリカを統一した！", "{} has unified Eurasia and Africa!", "{}统一了欧亚大陆！", tx(self.nations[self.player].name))));
         }
     }
 
@@ -3122,6 +3122,40 @@ mod tests {
                 assert!(w.nations[i].capital.is_some(), "{} の都が無い", d.name);
             }
         }
+    }
+
+    #[test]
+    fn africa_is_continuous_and_new_civilizations_can_start() {
+        let w = World::new(12345);
+        let terrain_at = |lon, lat| {
+            let (x, y) = ll_to_tile(lon, lat);
+            w.map.terrain[Map::idx(x as i32, y as i32)]
+        };
+        assert!(terrain_at(24.95, 28.0).passable(), "Libya west of Egypt");
+        assert!(terrain_at(25.05, 28.0).passable(), "Egypt east of Libya");
+        assert!(terrain_at(19.50, -34.60).passable(), "southern Cape");
+        assert!(terrain_at(46.5, -20.0).passable(), "Madagascar");
+        assert_eq!(terrain_at(32.7, -1.1), Terrain::Lake, "Lake Victoria");
+        assert_eq!(terrain_at(13.0, 24.0), Terrain::Desert, "central Sahara");
+        assert!(w.same_land(w.nations[EGYPT].home, w.nations[JERUSALEM].home));
+        let sea_at = |lon, lat| {
+            let (x, y) = ll_to_tile(lon, lat);
+            w.sea_region[Map::idx(x as i32, y as i32)]
+        };
+        let atlantic = sea_at(-12.0, 35.0);
+        assert_ne!(atlantic, u32::MAX);
+        assert_eq!(sea_at(14.0, 35.5), atlantic, "Strait of Gibraltar");
+        assert_eq!(sea_at(38.0, 20.0), atlantic, "Red Sea via the Cape");
+
+        for nation in [CARTHAGE, KUSH, MALI, IFE, AKSUM, KILWA, ZIMBABWE] {
+            let n = &w.nations[nation];
+            assert!(n.alive && n.capital.and_then(|h| w.bld(h)).is_some(), "{}", n.name);
+            assert!(w.same_land(w.nations[EGYPT].home, n.home), "{}", n.name);
+            assert!(pantheon(nation) < PANTHEONS.len(), "{}", n.name);
+        }
+        assert_eq!(pantheon(MALI), pantheon(KILWA));
+        assert_ne!(pantheon(EGYPT), pantheon(KUSH));
+        assert!(w.can_build_ships(CARTHAGE) && w.can_build_ships(KILWA));
     }
 
     #[test]

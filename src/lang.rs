@@ -112,7 +112,7 @@ pub fn has(ja: &str) -> bool {
 /// 窓の題名
 #[cfg_attr(not(windows), allow(dead_code))]
 pub fn window_title() -> &'static str {
-    t!("神話大戦 — ユーラシアの覇権", "Mythology — Conquest of Eurasia", "神话大战 — 欧亚争霸")
+    t!("神話大戦 — ユーラシア・アフリカの覇権", "Mythology — Conquest of Eurasia and Africa", "神话大战 — 欧亚非争霸")
 }
 
 /// 言葉をつなぐ区切り（日本語・中国語は「・」「、」、英語は「, 」）

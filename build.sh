@@ -23,10 +23,10 @@ mkdir -p dist
 cp web/index.html web/main.js web/browser-recovery.js web/manifest.webmanifest web/icon-192.png web/icon-512.png web/apple-touch-icon.png dist/
 cp assets/app_icon.ico dist/favicon.ico
 cp target/wasm32-unknown-unknown/release/yymythology.wasm dist/
-cp assets/mythology/divine.bgra dist/divine-v1.bgra
-cp assets/mythology/buildings.bgra dist/buildings-v1.bgra
-gzip -n -c assets/mythology/divine.bgra > dist/divine-v1.bgra.gz
-gzip -n -c assets/mythology/buildings.bgra > dist/buildings-v1.bgra.gz
+cp assets/mythology/divine.bgra dist/divine-v2.bgra
+cp assets/mythology/buildings.bgra dist/buildings-v2.bgra
+gzip -n -c assets/mythology/divine.bgra > dist/divine-v2.bgra.gz
+gzip -n -c assets/mythology/buildings.bgra > dist/buildings-v2.bgra.gz
 # wasm-opt があればさらに小さくする（任意）
 if command -v wasm-opt >/dev/null 2>&1; then
   wasm-opt -O3 dist/yymythology.wasm -o dist/yymythology.wasm || true
@@ -43,14 +43,14 @@ cat > dist/_headers <<'H'
 /yymythology.wasm
   Content-Type: application/wasm
   Cache-Control: no-cache
-/divine-v1.bgra
+/divine-v2.bgra
   Cache-Control: no-cache
-/buildings-v1.bgra
+/buildings-v2.bgra
   Cache-Control: no-cache
-/divine-v1.bgra.gz
+/divine-v2.bgra.gz
   Content-Type: application/gzip
   Cache-Control: no-cache
-/buildings-v1.bgra.gz
+/buildings-v2.bgra.gz
   Content-Type: application/gzip
   Cache-Control: no-cache
 H
