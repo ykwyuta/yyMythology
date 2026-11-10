@@ -1,0 +1,60 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        # long_sim は全 AI で60年分だけ回す
+        env:
+          SIM_YEARS: "60"
+        run: cargo test --release --lib
+
+      - name: Build (WebAssembly)
+        run: bash build.sh
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: yymythology-web
+          path: dist
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --locked --bin yymythology-win
+
+      - name: Test
+        # Windows 版の描画・記録の層を含めて単体テストを通す（long_sim は短く）
+        env:
+          SIM_YEARS: "30"
+        run: cargo test --release --locked --lib
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: yymythology-windows
+          path: |
+            target/release/yymythology-win.exe
+            target/release/yymythology_win.pdb
+            README.md
