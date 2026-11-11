@@ -1,7 +1,7 @@
 //! Generated period artwork. Slots are normalized at build-authoring time, never at runtime.
 use super::*;
-use crate::geo::NATIONS;
-use crate::world::{DemonKind, GOD_LIMIT, HEROES, ORIGINAL_HERO_COUNT, PANTHEONS, ROSTERS, UT_MAGE};
+use crate::geo::{CARTHAGE, DALI, DAIVIET, GHURID, KURD, NATIONS};
+use crate::world::{DemonKind, GOD_LIMIT, HEROES, ORIGINAL_HERO_COUNT, PANTHEONS, ROSTERS, UT_MAGE, UT_WAR_ELEPHANT};
 use std::borrow::Cow;
 use std::cell::OnceCell;
 
@@ -31,6 +31,11 @@ fn hero_pixels(hero: usize) -> (&'static [u8], usize) {
 }
 
 const DIVINE_SIZE: usize = 96;
+const ELEPHANT_SIZE: usize = 96;
+// Order in assets/faction-art/war-elephants.json; the last cell is neutral.
+const ELEPHANT_NATIONS: [usize; 5] = [DALI, DAIVIET, GHURID, KURD, CARTHAGE];
+const ELEPHANTS_RAW: &[u8; (ELEPHANT_NATIONS.len() + 1) * ELEPHANT_SIZE * ELEPHANT_SIZE * 4] =
+    include_bytes!("../../assets/mythology/war-elephants.bgra");
 const BUILDING_SIZE: usize = 112;
 const UNIT_SIZE: usize = 96;
 const BUILDINGS_PER_NATION: usize = 6;
@@ -146,6 +151,8 @@ pub(super) struct PeriodArt {
     heroes_flip: Vec<Option<ID2D1Bitmap>>,
     divine: Vec<Option<ID2D1Bitmap>>,
     divine_flip: Vec<Option<ID2D1Bitmap>>,
+    elephants: Vec<Option<ID2D1Bitmap>>,
+    elephants_flip: Vec<Option<ID2D1Bitmap>>,
     buildings: Vec<CachedSprite>,
     buildings_fog: Vec<CachedSprite>,
     units: Vec<CachedSprite>,
@@ -169,6 +176,8 @@ impl PeriodArt {
         let divine = Atlas::Divine.bytes(0, DIVINE_COUNT * DIVINE_SIZE * DIVINE_SIZE * 4);
         self.divine = sprite_sheet(gfx, &divine, DIVINE_SIZE, false, 1.0);
         self.divine_flip = sprite_sheet(gfx, &divine, DIVINE_SIZE, true, 1.0);
+        self.elephants = sprite_sheet(gfx, ELEPHANTS_RAW, ELEPHANT_SIZE, false, 1.0);
+        self.elephants_flip = sprite_sheet(gfx, ELEPHANTS_RAW, ELEPHANT_SIZE, true, 1.0);
         // Allocate textures only when they are first drawn, including after a device reset.
         self.buildings = empty_sprites(NATIONS.len() * BUILDINGS_PER_NATION);
         self.buildings_fog = empty_sprites(NATIONS.len() * BUILDINGS_PER_NATION);
@@ -183,6 +192,11 @@ impl PeriodArt {
 
 impl Art {
     pub fn national_unit(&self, gfx: &Gfx, nation: usize, ut: u8, flip: bool) -> Option<&ID2D1Bitmap> {
+        if ut == UT_WAR_ELEPHANT {
+            let slot = ELEPHANT_NATIONS.iter().position(|&n| n == nation).unwrap_or(ELEPHANT_NATIONS.len());
+            let sprites = if flip { &self.period.elephants_flip } else { &self.period.elephants };
+            return sprites.get(slot).and_then(Option::as_ref);
+        }
         let slot = unit_slot(ut);
         let steppe = if flip { &self.period.neutral_flip } else { &self.period.neutral };
         if nation >= NATIONS.len() {
@@ -251,6 +265,9 @@ impl Art {
     pub fn period_hero(&self, gfx: &Gfx, hero: usize, flip: bool) -> Option<&ID2D1Bitmap> {
         if hero >= PORTRAIT_HERO_COUNT {
             let hero = HEROES.get(hero)?;
+            if hero.ut == UT_WAR_ELEPHANT {
+                return self.national_unit(gfx, hero.culture, hero.ut, flip);
+            }
             return self.faction_unit(gfx, hero.culture, unit_slot(hero.ut), flip);
         }
         (if flip { &self.period.heroes_flip } else { &self.period.heroes }).get(hero).and_then(Option::as_ref)
@@ -264,6 +281,14 @@ mod tests {
     fn atlas_layout_and_nation_coverage() {
         assert_eq!(NEUTRAL_UNITS.len(), LEGACY_CELL * 6);
         assert_eq!(EXTRA.len(), LEGACY_CELL * 8);
+        let elephant_rosters: Vec<_> = ROSTERS.iter().enumerate()
+            .filter_map(|(nation, roster)| roster.contains(&UT_WAR_ELEPHANT).then_some(nation))
+            .collect();
+        assert_eq!(elephant_rosters, ELEPHANT_NATIONS);
+        let elephant_sprites: std::collections::HashSet<_> =
+            ELEPHANTS_RAW.chunks_exact(ELEPHANT_SIZE * ELEPHANT_SIZE * 4).collect();
+        assert_eq!(elephant_sprites.len(), ELEPHANT_NATIONS.len() + 1);
+        assert!(elephant_sprites.iter().all(|sprite| sprite.iter().skip(3).step_by(4).any(|&a| a > 128)));
         assert_eq!(HEROES_RAW.len(), ORIGINAL_HERO_COUNT * HERO_SIZE * HERO_SIZE * 4);
         assert_eq!(REGIONAL_HEROES_RAW.len(), (PORTRAIT_HERO_COUNT - ORIGINAL_HERO_COUNT - 2) * REGIONAL_HERO_SIZE * REGIONAL_HERO_SIZE * 4);
         assert_eq!(FACTION_HEROES_RAW.len(), FACTION_HERO_SLOTS.len() * REGIONAL_HERO_SIZE * REGIONAL_HERO_SIZE * 4);

@@ -1,0 +1,16 @@
+{
+  "generator": "OpenAI ImageGen (built-in)",
+  "file": "war-elephants.png",
+  "columns": 3,
+  "rows": 2,
+  "cell_size": 96,
+  "slots": [
+    "Dali",
+    "Dai Viet",
+    "Ghurid",
+    "Kurd",
+    "Phoenicia",
+    "Neutral"
+  ],
+  "prompt": "A transparent production sprite atlas for a painted historical fantasy strategy game, exactly 3 columns and 2 rows of SIX equally sized square cells, a full war elephant isolated and centered in EACH cell, grid reading order, clear generous transparent padding around each full body, no overlaps, no margins around entire atlas beyond cell padding, clean alpha transparency, no background, no ground, no borders, no text. SIX ELEPHANTS, no horses. Three-quarter side view, facing down-right, readable 40px silhouettes with broad body, unmistakable curved trunk and two short tusks, 1 rider, restrained detail, painterly hand-painted miniature game sprite with warm light. Top-left Dali: grey elephant with teal and jade-green saddle cloth and rattan frame. Top-center Dai Viet: grey elephant, dark orange cloth and dark brown wooden rider platform. Top-right Ghurid: charcoal elephant, indigo and silver caparison. Bottom-left Kurdish: grey elephant with rust-red and cream woven cloth, leather saddle. Bottom-center Phoenician: dark gray elephant with burgundy and bronze caparison and small tower. Bottom-right neutral: gray elephant, muted brown cloth, simple wooden saddle. Not photorealistic, no gridlines, no gore, no weapons firing. Overall canvas landscape aspect 3:2, all 6 items equally scaled."
+}
