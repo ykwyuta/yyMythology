@@ -789,6 +789,7 @@ impl World {
             return Err(bad(t!("自国", "player state", "己方国家")));
         }
         w.time = r.f32()?;
+        w.update_demon_positions();
         w.stat_t = r.f32()?;
         w.income_t = r.f32()?;
         w.year_tick = r.f32()?;
