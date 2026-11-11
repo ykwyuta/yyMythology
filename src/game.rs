@@ -2852,7 +2852,7 @@ impl Game {
                         let b_bmp = if divine {
                             self.art.divine_bld_sprite(kind, fogged)
                         } else {
-                            self.art.national_building(origin, kind, fogged)
+                            self.art.national_building(&self.gfx, origin, kind, fogged)
                         };
                         if let Some(bmp) = b_bmp {
                             self.gfx.draw_bitmap_alpha(bmp, sx - r, sy - r * 1.08, sx + r, sy + r * 0.92, alpha);
@@ -2903,11 +2903,11 @@ impl Game {
                         let u_bmp = if god != NONE {
                             self.art.summoned_god(god, flip_x)
                         } else if is_hero {
-                            self.art.period_hero(hero as usize, flip_x)
+                            self.art.period_hero(&self.gfx, hero as usize, flip_x)
                         } else if divine {
                             self.art.divine_unit_sprite(kind, flip_x)
                         } else {
-                            self.art.national_unit(nation, ut, flip_x)
+                            self.art.national_unit(&self.gfx, nation, ut, flip_x)
                         };
                         if let Some(bmp) = u_bmp {
                             self.gfx.draw_bitmap(bmp, sx - r, sy - r * 1.35, sx + r, sy + r * 0.65);
@@ -3064,8 +3064,8 @@ impl Game {
         let mut tx0 = x0;
         if let Some(ci) = self.act_cmd_icon(act) {
             let ibmp = match act {
-                Act::Train(ut) => self.art.national_unit(self.world.player, ut, false),
-                Act::Place(k) => self.art.national_building(self.world.player, k, false),
+                Act::Train(ut) => self.art.national_unit(&self.gfx, self.world.player, ut, false),
+                Act::Place(k) => self.art.national_building(&self.gfx, self.world.player, k, false),
                 _ => self.art.cmd_icons[ci as usize].as_ref(),
             };
             if let Some(ibmp) = ibmp {
@@ -3186,7 +3186,7 @@ impl Game {
             let oy = if compact { 132.0 - 316.0 } else { 0.0 };
             self.art.draw_inset_box(&self.gfx, px + 18.0, oy + 316.0, w - 18.0, oy + 522.0);
             self.art.draw_corner_ornaments(&self.gfx, px + 20.0, oy + 318.0, w - 20.0, oy + 520.0, 12.0);
-            if let Some(cap_ic) = self.art.national_building(self.title_sel.unwrap_or(self.world.player), BKind::Capital, false) {
+            if let Some(cap_ic) = self.art.national_building(&self.gfx, self.title_sel.unwrap_or(self.world.player), BKind::Capital, false) {
                 self.gfx.draw_bitmap(cap_ic, px + 30.0, oy + 328.0, px + 78.0, oy + 376.0);
             }
             self.gfx.fill_rect(px + 86.0, oy + 336.0, px + 104.0, oy + 368.0, c4(n.color, 1.0));
@@ -3670,11 +3670,11 @@ impl Game {
             let sprite_bmp = if u.god != NONE {
                 self.art.summoned_god(u.god, false)
             } else if (u.hero as usize) < HEROES.len() {
-                self.art.period_hero(u.hero as usize, false)
+                self.art.period_hero(&self.gfx, u.hero as usize, false)
             } else if u.divine {
-                self.art.divine_unit_sprite(u.kind, false).or_else(|| self.art.national_unit(u.nation as usize, u.ut, false))
+                self.art.divine_unit_sprite(u.kind, false).or_else(|| self.art.national_unit(&self.gfx, u.nation as usize, u.ut, false))
             } else {
-                self.art.national_unit(u.nation as usize, u.ut, false)
+                self.art.national_unit(&self.gfx, u.nation as usize, u.ut, false)
             };
             if let Some(bmp) = sprite_bmp {
                 self.gfx.draw_bitmap(bmp, px0 + 2.0, py0 + 2.0, px0 + psz - 2.0, py0 + psz - 2.0);
@@ -3752,7 +3752,7 @@ impl Game {
                     let hov = mx >= bx0 && mx <= bx1 && my >= by0 && my <= by1;
                     self.gfx.fill_round(bx0, by0, bx1, by1, 4.0, if hov { [0.10, 0.29, 0.36, 0.98] } else { [0.055, 0.13, 0.18, 0.96] });
                     self.gfx.stroke_round(bx0, by0, bx1, by1, 4.0, 1.2, [0.40, 0.56, 0.59, 0.9]);
-                    if let Some(bmp) = self.art.national_unit(pl, native_ut(pl, kinds[k]), false) {
+                    if let Some(bmp) = self.art.national_unit(&self.gfx, pl, native_ut(pl, kinds[k]), false) {
                         self.gfx.draw_bitmap(bmp, bx0 + 3.0, by0 + 3.0, bx0 + 41.0, by1 - 3.0);
                     }
                     let ks = format!("×{}", cnt[k]);
@@ -3788,9 +3788,9 @@ impl Game {
             let psz = 68.0;
             self.gfx.fill_rect(px0 - 2.0, py0 - 2.0, px0 + psz + 2.0, py0 + psz + 2.0, if is_divine_city { [0.95, 0.85, 0.45, 0.95] } else { c4(nc, 0.9) });
             let bld_bmp = if is_divine_city {
-                self.art.divine_bld_sprite(b.kind, false).or_else(|| self.art.national_building(b.origin as usize, b.kind, false))
+                self.art.divine_bld_sprite(b.kind, false).or_else(|| self.art.national_building(&self.gfx, b.origin as usize, b.kind, false))
             } else {
-                self.art.national_building(b.origin as usize, b.kind, false)
+                self.art.national_building(&self.gfx, b.origin as usize, b.kind, false)
             };
             if let Some(bmp) = bld_bmp {
                 self.gfx.draw_bitmap(bmp, px0, py0, px0 + psz, py0 + psz);
@@ -3836,7 +3836,7 @@ impl Game {
                 let qx = tx + i as f32 * 44.0;
                 let qy = y + 98.0;
                 self.gfx.fill_round(qx, qy, qx + 40.0, qy + 40.0, 3.0, [0.055, 0.13, 0.18, 1.0]);
-                if let Some(ubmp) = self.art.national_unit(b.nation as usize, *k, false) {
+                if let Some(ubmp) = self.art.national_unit(&self.gfx, b.nation as usize, *k, false) {
                     self.gfx.draw_bitmap(ubmp, qx + 2.0, qy + 2.0, qx + 38.0, qy + 38.0);
                 }
                 if *f > 0.0 {
@@ -3852,9 +3852,9 @@ impl Game {
             let psz = 68.0;
             self.gfx.fill_rect(px0 - 2.0, py0 - 2.0, px0 + psz + 2.0, py0 + psz + 2.0, if is_divine { [0.95, 0.85, 0.45, 0.95] } else { c4(nc, 0.9) });
             let cap_bmp = if is_divine {
-                self.art.divine_bld_sprite(BKind::Capital, false).or_else(|| self.art.national_building(pl, BKind::Capital, false))
+                self.art.divine_bld_sprite(BKind::Capital, false).or_else(|| self.art.national_building(&self.gfx, pl, BKind::Capital, false))
             } else {
-                self.art.national_building(pl, BKind::Capital, false)
+                self.art.national_building(&self.gfx, pl, BKind::Capital, false)
             };
             if let Some(bmp) = cap_bmp {
                 self.gfx.draw_bitmap(bmp, px0, py0, px0 + psz, py0 + psz);
@@ -3909,7 +3909,7 @@ impl Game {
                 let hov = mx >= bx0 && mx <= bx1 && my >= by0 && my <= by1;
                 self.gfx.fill_round(bx0, by0, bx1, by1, 4.0, if hov { [0.10, 0.29, 0.36, 0.98] } else { [0.055, 0.13, 0.18, 0.96] });
                 self.gfx.stroke_round(bx0, by0, bx1, by1, 4.0, 1.1, [0.40, 0.56, 0.59, 0.85]);
-                if let Some(bmp) = self.art.national_unit(pl, native_ut(pl, kinds[k]), false) {
+                if let Some(bmp) = self.art.national_unit(&self.gfx, pl, native_ut(pl, kinds[k]), false) {
                     self.gfx.draw_bitmap(bmp, bx0 + 3.0, by0 + 3.0, bx0 + 37.0, by1 - 3.0);
                 }
                 let ks = format!("×{}", cnt[k]);

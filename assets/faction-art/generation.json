@@ -1,0 +1,715 @@
+{
+  "generator": "Built-in ImageGen",
+  "factions": [
+    "Mongol",
+    "Northern Han",
+    "Jurchen",
+    "Eastern Khitan",
+    "Tangut",
+    "Korea",
+    "Japan",
+    "Bai",
+    "Kinh",
+    "Tibet",
+    "Naiman",
+    "Kerait",
+    "Tatar",
+    "Merkit",
+    "Qocho Uyghur",
+    "Western Khitan",
+    "Ainu",
+    "Khwarazm",
+    "Oghuz",
+    "Mesopotamian Arab",
+    "Ghor",
+    "Egypt",
+    "Kurd",
+    "Thai",
+    "Byzantium",
+    "Kartvelian",
+    "Cossack",
+    "Volga Bulgar",
+    "Southern Rus",
+    "Northeastern Rus",
+    "Northwestern Rus",
+    "Poland",
+    "Magyar",
+    "Southern Han",
+    "Britain",
+    "Gaul",
+    "Iberia",
+    "Rome",
+    "Nordic",
+    "Germania",
+    "Baltic",
+    "India",
+    "Tamil",
+    "Khmer",
+    "Java",
+    "Arabia",
+    "Siberia",
+    "Kamchatka",
+    "Greece",
+    "Persia",
+    "Phoenicia",
+    "Nubia",
+    "Mande",
+    "Yoruba",
+    "Aksum",
+    "Swahili",
+    "Shona",
+    "Burma",
+    "Malay"
+  ],
+  "buildings": {
+    "cell_size": 112,
+    "sprites_per_faction": 6,
+    "legacy": [
+      {
+        "faction": 0,
+        "path": "assets/period/steppe.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 1,
+        "path": "assets/period/song.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 5,
+        "path": "assets/period/goryeo.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 6,
+        "path": "assets/period/japan.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 8,
+        "path": "assets/period/southern.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 9,
+        "path": "assets/period/tibet.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 16,
+        "path": "assets/period/ainu.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 20,
+        "path": "assets/period/islamic.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 28,
+        "path": "assets/period/orthodox.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 31,
+        "path": "assets/period/latin.bgra",
+        "cell_size": 192,
+        "first_cell": 6
+      },
+      {
+        "faction": 34,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 0
+      },
+      {
+        "faction": 36,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 6
+      },
+      {
+        "faction": 37,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 12
+      },
+      {
+        "faction": 48,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 18
+      },
+      {
+        "faction": 38,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 24
+      },
+      {
+        "faction": 40,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 30
+      },
+      {
+        "faction": 41,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 36
+      },
+      {
+        "faction": 43,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 42
+      },
+      {
+        "faction": 45,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 48
+      },
+      {
+        "faction": 19,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 54
+      },
+      {
+        "faction": 46,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 60
+      },
+      {
+        "faction": 21,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 66
+      },
+      {
+        "faction": 50,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 72
+      },
+      {
+        "faction": 51,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 78
+      },
+      {
+        "faction": 52,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 84
+      },
+      {
+        "faction": 53,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 90
+      },
+      {
+        "faction": 54,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 96
+      },
+      {
+        "faction": 55,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 102
+      },
+      {
+        "faction": 56,
+        "path": "assets/mythology/buildings.bgra",
+        "cell_size": 128,
+        "first_cell": 108
+      }
+    ],
+    "sheets": [
+      {
+        "file": "buildings-01.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          2,
+          3
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Jurchen: Jin-era northeast China, stout larch palisades, birch and rammed earth, charcoal tile roofs. Rows 3 and 4 exclusively Eastern Khitan: Liao-era northeastern Inner Mongolia, stone-and-timber compounds, octagonal brick towers, low gray roof. Keep silhouettes visibly different between sets and each building type.",
+        "edit_prompt": "Background extraction only. Remove every background pixel from this sprite atlas to genuine alpha zero. No white, gray, haze, dust, shadows, gradient or painted checkerboard. Keep precisely twelve complete miniature buildings in the exact same 3-column by 4-row positions. Preserve their shapes, details, footprints, fences, trees, docks, crops and paint. Transparent empty space in every corner and wide gutter. Do not move, redraw, enlarge, or change any building."
+      },
+      {
+        "file": "buildings-02.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          4,
+          7
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Tangut: Western Xia rammed-earth enclosure, square timber gates, compact ochre stupa and muted vermilion. Rows 3 and 4 exclusively Bai: Dali lakeside plaster and stone, gray tiled roofs, carved gate screens, pale blue shutters. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-03.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          10,
+          11
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Naiman: Altai herders, dark graphite felt tents with pale trim, dry stone windbreaks and fir stockades. Rows 3 and 4 exclusively Kerait: Tuul River valley, russet felt gers with crossed lattice and tall larch frames, golden textile details. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-04.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          12,
+          13
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Tatar: Lake Hulun, reddish hide pavilions with stitched edging, birch fences and light reed mats. Rows 3 and 4 exclusively Merkit: Selenga forest steppe, low blue-gray felt tents and timber huts with pine-shingle roofs. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-05.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          14,
+          15
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Qocho Uyghur: Turfan oasis, sun-baked adobe and turquoise accents, shaded timber verandas, reed vine trellises. Rows 3 and 4 exclusively Western Khitan: Qara Khitai Ili valley, pale mud-brick walls, dark timber galleries and striped purple awnings. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-06.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          17,
+          18
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Khwarazm: lower Amu Darya earthen towers, geometric baked-brick bands, saffron textiles, flat roofs. Rows 3 and 4 exclusively Oghuz: Seljuk Khorasan, baked-brick portals with geometric courses, turquoise tiles and broad courtyards. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-07.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          22,
+          23
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Kurd: Upper Mesopotamia and Zagros, warm rough stone terraced houses, timber balconies, woven garnet canopies. Rows 3 and 4 exclusively Thai: Sukhothai brickwork, lotus-bud spires, layered warm red wooden roofs, ponds and carved gables. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-08.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          24,
+          25
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Byzantium: Constantinople brick-and-stone banding, leaded domes, ochre tesserae and imperial purple details. Rows 3 and 4 exclusively Kartvelian: Georgian stonework, tall conical roofs and carved portals, Caucasus dry-stone defensive towers. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-09.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          26,
+          27
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Cossack: Zaporizhian timber earthworks, palisades, low whitewashed cottages with deep thatched roofs, reed river landing. Rows 3 and 4 exclusively Volga Bulgar: Volga Bulgar river town, sturdy oak walls with baked-brick gateways and carved eaves, green accents. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-10.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          29,
+          30
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Northeastern Rus: Vladimir white limestone carving, silver cupolas and pine timber roofs. Rows 3 and 4 exclusively Northwestern Rus: Novgorod riverside timber warehouses, dark shingle roofs, compact white masonry and small green domes. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-11.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          32,
+          33
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Magyar: Árpád Carpathian pale plaster, steep red shingles, stone ring fort and timber verandas. Rows 3 and 4 exclusively Southern Han: Southern Song Lin'an Jiangnan, waterside canals, white plaster and upturned ink-black roofs, green shutters. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-12.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          35,
+          39
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Gaul: La Tène Gaulish timber-and-earth oppidum, tawny plank roofs and red angular motifs, dry stone. Rows 3 and 4 exclusively Germania: early Germanic oak longhalls, reed thatch, patterned half-timber and wooden stockades. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-13.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          42,
+          44
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Tamil: Chola Tamil granite, stepped Dravidian vimana, red earthen tiles, coconut timber. Rows 3 and 4 exclusively Java: Majapahit red brick split gates, black volcanic stone, layered dark tile and carved timber. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-14.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          47,
+          49
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Kamchatka: Itelmen coastal Kamchatka, low semi-subterranean wood homes with grass roofs and raised fish platforms. Rows 3 and 4 exclusively Persia: Iranian plateau, pale dressed stone and brick, Achaemenid-style column halls, cobalt glazed accents. Keep silhouettes visibly different between sets and each building type."
+      },
+      {
+        "file": "buildings-15.png",
+        "columns": 3,
+        "rows": 4,
+        "factions": [
+          57,
+          58
+        ],
+        "prompt": "Production transparent sprite atlas for a hand-painted historical-fantasy RTS. EXACTLY THREE columns by 4 equal rows, portrait orientation, equal square cells. Each cell contains exactly one isolated isometric miniature with matching top-down three-quarter camera, tight ground contact, warm upper-left lighting, strong silhouette at 48 px. Entire subject inside the cell with generous fully transparent padding. Real alpha zero between sprites. No backdrop, fog, lettering, tile borders or oversized ground; ports have only a short attached dock. The first row for each set always shows CAPITAL with a distinct large landmark, TOWN with two small dwellings, BARRACKS with compact training yard. The next row always shows FARM with crops and shed, FORT with tower and wall, PORT with waterfront warehouse and dock. Rows 1 and 2 exclusively Burma: Bagan terracotta brick, tapering Burmese pagoda profiles, teak homes, vermilion trim. Rows 3 and 4 exclusively Malay: Melaka elevated hardwood, broad palm-and-tile roofs, carved gables and tall plank docks. Keep silhouettes visibly different between sets and each building type."
+      }
+    ]
+  },
+  "units": {
+    "cell_size": 96,
+    "sprites_per_faction": 8,
+    "sheets": [
+      {
+        "file": "units-01.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          0,
+          1,
+          2
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Mongol blue-sashed ivory felt, dark lamellar. Rows 3–4: Northern Han Kaifeng black lamellar and red silk. Rows 5–6: Jurchen Jin amber and dark brown winter fur. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms."
+      },
+      {
+        "file": "units-02.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          3,
+          4,
+          5
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Eastern Khitan Liao plum sleeves and charcoal scale. Rows 3–4: Tangut Western Xia ochre quilt and burgundy. Rows 5–6: Goryeo jade green and black lacquer. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "row_edges": [
+          0,
+          253,
+          510,
+          767,
+          1026,
+          1287,
+          1536
+        ]
+      },
+      {
+        "file": "units-03.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          6,
+          7,
+          8
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Heian Kamakura Japanese indigo and rust lacquer. Rows 3–4: Dali Bai undyed white and dark indigo weave. Rows 5–6: Dai Viet Kinh red sash and brown silk. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "edit_prompt": "Background extraction only. Remove every background pixel from this 4-column by 6-row atlas to real alpha zero, including the white-gray soft backdrop and any brown haze. Keep precisely all 24 full-size subjects, in exactly the same grid positions, costumes, colors, scale, silhouettes and pose. Preserve every complete horse, ship and figure. Alpha-zero gutters and edges around every subject. No floor, shadow, vignette, border or replacement backdrop. No layout or styling changes.",
+        "row_edges": [
+          0,
+          261,
+          514,
+          770,
+          1031,
+          1283,
+          1536
+        ]
+      },
+      {
+        "file": "units-04.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          9,
+          10,
+          11
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Tibetan oxblood and saffron wool. Rows 3–4: Naiman Altai graphite felt and pale shearling. Rows 5–6: Kerait russet wool and gold braid. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "row_edges": [
+          0,
+          260,
+          524,
+          780,
+          1037,
+          1295,
+          1536
+        ]
+      },
+      {
+        "file": "units-05.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          12,
+          13,
+          14
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Hulun Tatar rust and cream fur. Rows 3–4: Merkit Selenga pine green and slate-blue. Rows 5–6: Qocho Uyghur turquoise silk and cream trousers. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "edit_prompt": "Background extraction only. Remove every background pixel from this 4-column by 6-row atlas to real alpha zero, including the white-gray soft backdrop and any brown haze. Keep precisely all 24 full-size subjects, in exactly the same grid positions, costumes, colors, scale, silhouettes and pose. Preserve every complete horse, ship and figure. Alpha-zero gutters and edges around every subject. No floor, shadow, vignette, border or replacement backdrop. No layout or styling changes."
+      },
+      {
+        "file": "units-06.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          15,
+          16,
+          17
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Western Khitan Ili plum cloth and ochre hide. Rows 3–4: Ainu embroidered indigo bark-fiber garments. Rows 5–6: Khwarazm amber quilted linen and blue accents. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms."
+      },
+      {
+        "file": "units-07.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          18,
+          19,
+          20
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Oghuz Seljuk sand and turquoise mail. Rows 3–4: Abbasid Baghdad black and midnight blue cloth. Rows 5–6: Ghurid highland gray felt and saffron. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "row_edges": [
+          0,
+          257,
+          513,
+          775,
+          1029,
+          1281,
+          1536
+        ]
+      },
+      {
+        "file": "units-08.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          21,
+          22,
+          23
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Ancient Egyptian ivory linen and blue gold trim. Rows 3–4: Kurdish Zagros pale wool with garnet sash. Rows 5–6: Thai Sukhothai amber and deep teal. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms."
+      },
+      {
+        "file": "units-09.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          24,
+          25,
+          26
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Byzantine purple cloth and golden lamellar. Rows 3–4: Kartvelian Georgian teal and russet ring mail. Rows 5–6: Zaporozhian Cossack embroidered white and red wool with blue sash. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "edit_prompt": "Background extraction only. Remove every background pixel from this 4-column by 6-row atlas to real alpha zero, including the white-gray soft backdrop and any brown haze. Keep precisely all 24 full-size subjects, in exactly the same grid positions, costumes, colors, scale, silhouettes and pose. Preserve every complete horse, ship and figure. Alpha-zero gutters and edges around every subject. No floor, shadow, vignette, border or replacement backdrop. No layout or styling changes."
+      },
+      {
+        "file": "units-10.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          27,
+          28,
+          29
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Volga Bulgar forest green and russet quilt. Rows 3–4: Kyivan Southern Rus ochre and red wool. Rows 5–6: Vladimir Northeastern Rus silver-blue and gray wool. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms."
+      },
+      {
+        "file": "units-11.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          30,
+          31,
+          32
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Novgorod Northwestern Rus pine-green and birch. Rows 3–4: Piast Polish red and ivory mail. Rows 5–6: Árpád Magyar red and dark green wool. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "edit_prompt": "Background extraction only. Remove every background pixel from this 4-column by 6-row atlas to real alpha zero, including the white-gray soft backdrop and any brown haze. Keep precisely all 24 full-size subjects, in exactly the same grid positions, costumes, colors, scale, silhouettes and pose. Preserve every complete horse, ship and figure. Alpha-zero gutters and edges around every subject. No floor, shadow, vignette, border or replacement backdrop. No layout or styling changes.",
+        "row_edges": [
+          0,
+          262,
+          514,
+          774,
+          1022,
+          1282,
+          1536
+        ]
+      },
+      {
+        "file": "units-12.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          33,
+          34,
+          35
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Southern Han Lin'an jade green and ivory lacquer. Rows 3–4: Brittonic Britain moss gray-blue wool and bronze. Rows 5–6: La Tène Gaul ochre red checked wool and torcs. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms."
+      },
+      {
+        "file": "units-13.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          36,
+          37,
+          38
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Iberian umber and indigo fabric. Rows 3–4: Republican Roman crimson and bronze. Rows 5–6: Norse dark slate-blue wool and fur. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "row_edges": [
+          0,
+          255,
+          513,
+          770,
+          1026,
+          1280,
+          1536
+        ]
+      },
+      {
+        "file": "units-14.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          39,
+          40,
+          41
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Germanic russet wool and bronze pins. Rows 3–4: Baltic forest-green flax and amber. Rows 5–6: North Indian sandstone red and white bronze. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "edit_prompt": "Background extraction only. Remove every background pixel from this 4-column by 6-row atlas to real alpha zero, including the white-gray soft backdrop and any brown haze. Keep precisely all 24 full-size subjects, in exactly the same grid positions, costumes, colors, scale, silhouettes and pose. Preserve every complete horse, ship and figure. Alpha-zero gutters and edges around every subject. No floor, shadow, vignette, border or replacement backdrop. No layout or styling changes."
+      },
+      {
+        "file": "units-15.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          42,
+          43,
+          44
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Chola Tamil maroon and gold cotton. Rows 3–4: Angkor Khmer ivory and dark red silk. Rows 5–6: Majapahit Javanese patterned kain and dark gold. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "row_edges": [
+          0,
+          185,
+          370,
+          549,
+          718,
+          880,
+          1024
+        ]
+      },
+      {
+        "file": "units-16.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          45,
+          46,
+          47
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Arabian sand-color and garnet. Rows 3–4: Sakha Siberian blue fur and cream wool. Rows 5–6: Itelmen Kamchatka slate and fur parkas. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms."
+      },
+      {
+        "file": "units-17.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          48,
+          49,
+          50
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Ancient Greek bronze, wine red and white linen. Rows 3–4: Achaemenid Persian indigo and saffron textiles. Rows 5–6: Phoenician purple bordered linen and bronze. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "row_edges": [
+          0,
+          271,
+          539,
+          806,
+          1074,
+          1321,
+          1536
+        ]
+      },
+      {
+        "file": "units-18.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          51,
+          52,
+          53
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Meroitic Nubian violet ivory cloth and gold. Rows 3–4: Mande ochre and indigo quilted cotton. Rows 5–6: Yoruba Ife indigo weave and coral accents. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "row_edges": [
+          0,
+          257,
+          515,
+          771,
+          1024,
+          1292,
+          1536
+        ]
+      },
+      {
+        "file": "units-19.png",
+        "columns": 4,
+        "rows": 6,
+        "factions": [
+          54,
+          55,
+          56
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 6 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Aksumite ivory and burgundy. Rows 3–4: Swahili Kilwa cream and turquoise. Rows 5–6: Shona Zimbabwe red-brown textiles and pale beads. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms."
+      },
+      {
+        "file": "units-20.png",
+        "columns": 4,
+        "rows": 4,
+        "factions": [
+          57,
+          58
+        ],
+        "prompt": "Produce a game-ready sprite atlas, exactly FOUR COLUMNS and 4 ROWS of equal square cells, arranged in a neat rectangular grid. Each cell contains exactly ONE isolated full-body miniature with a distinct silhouette in an orthographic three-quarter strategy-game view facing lower right, including full horse or boat. Painterly realistic game art, warm upper-left light. Solid alpha-zero transparent surroundings and wide gutters; no background, floor, fog, shadow, borders, labels, words or numerals. Each pair of rows has one different culture. The first row for EVERY culture is: 1 worker with basket or hoe, 2 melee infantry with shield and spear, 3 bowman standing holding bow, 4 mounted bowman on full horse. The second row for EVERY culture is: 1 armored cavalry lancer on full horse, 2 elite foot warrior with ornate local armor and a distinctive melee silhouette, 3 robed spellcaster with a small staff, 4 wooden sailing vessel on a tiny wake. Rows 1–2: Bagan Burmese deep red and indigo cloth. Rows 3–4: Melaka Malay turquoise sampin and dark headcloth. Maintain this exact cell order, differentiating regional dress, equipment and boat silhouettes, and allow every figure complete padding. No firearms.",
+        "row_edges": [
+          0,
+          304,
+          621,
+          935,
+          1247
+        ]
+      }
+    ]
+  }
+}

@@ -24,9 +24,11 @@ cp web/index.html web/main.js web/browser-recovery.js web/manifest.webmanifest w
 cp assets/app_icon.ico dist/favicon.ico
 cp target/wasm32-unknown-unknown/release/yymythology.wasm dist/
 cp assets/mythology/divine.bgra dist/divine-v3.bgra
-cp assets/mythology/buildings.bgra dist/buildings-v2.bgra
+cp assets/mythology/faction-buildings.bgra dist/faction-buildings-v1.bgra
+cp assets/mythology/faction-units.bgra dist/faction-units-v1.bgra
 gzip -n -c assets/mythology/divine.bgra > dist/divine-v3.bgra.gz
-gzip -n -c assets/mythology/buildings.bgra > dist/buildings-v2.bgra.gz
+gzip -n -c assets/mythology/faction-buildings.bgra > dist/faction-buildings-v1.bgra.gz
+gzip -n -c assets/mythology/faction-units.bgra > dist/faction-units-v1.bgra.gz
 # wasm-opt があればさらに小さくする（任意）
 if command -v wasm-opt >/dev/null 2>&1; then
   wasm-opt -O3 dist/yymythology.wasm -o dist/yymythology.wasm || true
@@ -45,12 +47,17 @@ cat > dist/_headers <<'H'
   Cache-Control: no-cache
 /divine-v3.bgra
   Cache-Control: no-cache
-/buildings-v2.bgra
+/faction-buildings-v1.bgra
+  Cache-Control: no-cache
+/faction-units-v1.bgra
   Cache-Control: no-cache
 /divine-v3.bgra.gz
   Content-Type: application/gzip
   Cache-Control: no-cache
-/buildings-v2.bgra.gz
+/faction-buildings-v1.bgra.gz
+  Content-Type: application/gzip
+  Cache-Control: no-cache
+/faction-units-v1.bgra.gz
   Content-Type: application/gzip
   Cache-Control: no-cache
 H

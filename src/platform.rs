@@ -4,7 +4,7 @@
 pub mod js {
     #[link(wasm_import_module = "env")]
     extern "C" {
-        pub fn js_copy_mythology_atlas(id: u32, ptr: *mut u8, len: usize) -> u32;
+        pub fn js_copy_mythology_atlas(id: u32, offset: usize, ptr: *mut u8, len: usize) -> u32;
         pub fn js_now() -> f64;
         pub fn js_random() -> u32;
         pub fn js_log(ptr: *const u8, len: usize, level: u32);

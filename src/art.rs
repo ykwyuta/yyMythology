@@ -847,10 +847,10 @@ impl Art {
     }
 
     pub fn divine_unit_sprite(&self, k: UnitKind, flip: bool) -> Option<&ID2D1Bitmap> {
-        self.period.get(120 + if k == UnitKind::Cavalry { 6 } else { 5 }, flip, false)
+        self.period.legacy_extra(if k == UnitKind::Cavalry { 6 } else { 5 }, flip, false)
     }
     pub fn divine_bld_sprite(&self, _k: BKind, fog: bool) -> Option<&ID2D1Bitmap> {
-        self.period.get(127, false, fog)
+        self.period.legacy_extra(7, false, fog)
     }
 
     pub fn mountain_sprite(&self, flip_x: bool, fogged: bool) -> Option<&ID2D1Bitmap> {

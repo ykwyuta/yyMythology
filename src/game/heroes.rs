@@ -48,7 +48,7 @@ impl Game {
             let ix0 = rx + 4.0;
             let iy0 = ry + (rowh - isz) * 0.5;
             self.gfx.fill_round(ix0, iy0, ix0 + isz, iy0 + isz, 3.0, [0.035, 0.085, 0.12, 0.96]);
-            if let Some(hbmp) = self.art.period_hero(k, false) {
+            if let Some(hbmp) = self.art.period_hero(&self.gfx, k, false) {
                 self.gfx.draw_bitmap(hbmp, ix0 + 1.0, iy0 + 1.0, ix0 + isz - 1.0, iy0 + isz - 1.0);
             }
             self.gfx.stroke_round(ix0, iy0, ix0 + isz, iy0 + isz, 3.0, 1.0, if owner.is_some() { [0.45, 0.40, 0.32, 0.8] } else { [0.92, 0.78, 0.36, 0.92] });

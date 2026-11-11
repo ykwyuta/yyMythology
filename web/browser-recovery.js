@@ -55,7 +55,7 @@
       // CacheStorage is separate from IndexedDB/localStorage. In a shared
       // origin, remove only this game's known files, keeping other games.
       const assets = new Set([base.href, next.origin + next.pathname,
-        ...['index.html', 'main.js', 'browser-recovery.js', 'manifest.webmanifest', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'key-art.jpg', 'divine-v1.bgra.gz', 'buildings-v1.bgra.gz', 'divine-v1.bgra', 'buildings-v1.bgra', 'divine-v2.bgra.gz', 'buildings-v2.bgra.gz', 'divine-v2.bgra', 'buildings-v2.bgra', 'divine-v3.bgra.gz', 'divine-v3.bgra']
+        ...['index.html', 'main.js', 'browser-recovery.js', 'manifest.webmanifest', 'favicon.ico', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'key-art.jpg', 'divine-v1.bgra.gz', 'buildings-v1.bgra.gz', 'divine-v1.bgra', 'buildings-v1.bgra', 'divine-v2.bgra.gz', 'buildings-v2.bgra.gz', 'divine-v2.bgra', 'buildings-v2.bgra', 'divine-v3.bgra.gz', 'divine-v3.bgra', 'faction-buildings-v1.bgra', 'faction-units-v1.bgra', 'faction-buildings-v1.bgra.gz', 'faction-units-v1.bgra.gz']
           .map((file) => new URL(file, base).href)]);
       // The Wasm filename is supplied in the HTML (directory names may differ).
       if (document.body.dataset.gameWasm) assets.add(new URL(document.body.dataset.gameWasm, base).href);
