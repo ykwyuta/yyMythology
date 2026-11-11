@@ -17,6 +17,7 @@ mod demons;
 pub use demons::{Demon, DemonKind, DEMON_RANGE};
 pub use mythology::*;
 pub use magic::{Spell, METEOR_CAST_TIME, METEOR_RADIUS};
+use magic::METEOR_RANGE;
 mod save;
 mod units;
 mod conquest;
@@ -2613,7 +2614,8 @@ impl World {
                 let (tp, rad, _) = info.unwrap();
                 let pos = self.units[i].pos;
                 let def = self.units[i].def();
-                let range = def.range + rad;
+                let attack_range = if mage && matches!(t, Target::Bld(_)) { METEOR_RANGE } else { def.range };
+                let range = attack_range + rad;
                 let d = pos.dist(tp);
                 // 進軍中なら深追いしない
                 if let (Some(_), Target::Unit(_)) = (self.units[i].resume, t) {
@@ -2624,13 +2626,18 @@ impl World {
                     }
                 }
                 let in_range = match t {
-                    Target::Bld(bh) => d <= range || self.bld(bh).map_or(false, |b| b.dist_to_footprint(pos) <= def.range + 0.35),
+                    Target::Bld(bh) => d <= range || self.bld(bh).map_or(false, |b| b.dist_to_footprint(pos) <= attack_range + 0.35),
                     Target::Unit(_) => d <= range,
                 };
-                if mage && in_range
-                    && self.units[i].cooldown <= 0.0 && self.begin_meteor(i, Some(t))
+                if mage && self.units[i].cooldown <= 0.0
+                    && (in_range || (matches!(t, Target::Unit(_)) && self.units[i].scan_t <= 0.0))
                 {
-                    return;
+                    if self.begin_meteor(i, Some(t)) {
+                        return;
+                    }
+                    if !in_range {
+                        self.units[i].scan_t = 0.4;
+                    }
                 }
                 // 攻撃中も近くに敵兵がいれば建物より優先
                 if let Target::Bld(_) = t {
@@ -2659,7 +2666,7 @@ impl World {
                     };
                     if self.nav(i, nav_goal, nav_r, dt) {
                         let unreachable = match t {
-                            Target::Bld(bh) => d > range + 0.5 && self.bld(bh).map_or(true, |b| b.dist_to_footprint(self.units[i].pos) > def.range + 0.65),
+                            Target::Bld(bh) => d > range + 0.5 && self.bld(bh).map_or(true, |b| b.dist_to_footprint(self.units[i].pos) > attack_range + 0.65),
                             Target::Unit(_) => d > range + 0.5,
                         };
                         if unreachable {
@@ -3241,7 +3248,7 @@ mod tests {
         w.player = JAPAN;
         w.declare_war(JAPAN, SONG, true);
         let mage = w.spawn_unit(JAPAN, UT_MAGE, v2(300.0, 300.0), 1.0);
-        let enemy = w.spawn_unit(SONG, UT_INF, v2(309.0, 300.0), 1.0);
+        let enemy = w.spawn_unit(SONG, UT_INF, v2(305.0, 300.0), 1.0);
         let enemy_hp = w.unit(enemy).unwrap().hp;
         w.rebuild_grid();
 
@@ -3282,7 +3289,7 @@ mod tests {
         w.declare_war(JAPAN, SONG, true);
         w.nations[SONG].tm.def = 1.0;
         let mage = w.spawn_unit(JAPAN, UT_MAGE, v2(300.0, 300.0), 1.0);
-        let foe = w.spawn_unit(SONG, UT_INF, v2(308.0, 300.0), 1.0);
+        let foe = w.spawn_unit(SONG, UT_INF, v2(305.0, 300.0), 1.0);
         let foe_hp = w.unit(foe).unwrap().hp;
         w.rebuild_grid();
         w.unit_mut(mage).unwrap().scan_t = 0.0;
@@ -3300,7 +3307,8 @@ mod tests {
         w.update_unit(mage.idx as usize, DT);
         assert_eq!(w.bld(town).unwrap().hp, town_hp);
 
-        w.unit_mut(mage).unwrap().order = Order::Attack(Target::Bld(barracks));
+        // ファイヤーボールの射程外にある邑へ攻撃を命じても、メテオの射程で詠唱する。
+        w.order_attack(&[mage], Target::Bld(town));
         w.update_unit(mage.idx as usize, DT);
         for _ in 0..119 {
             w.update_unit(mage.idx as usize, DT);
@@ -3310,7 +3318,8 @@ mod tests {
             w.update_unit(mage.idx as usize, DT);
         }
         assert!(w.bld(town).unwrap().hp < town_hp);
-        assert!(w.bld(farm).unwrap().hp < farm_hp);
+        assert_eq!(w.bld(town).unwrap().hp, town_hp - 160.0);
+        assert_eq!(w.bld(farm).unwrap().hp, farm_hp - 80.0);
         assert_eq!(w.bld(barracks).unwrap().hp, barracks_hp);
         assert_eq!(w.bld(friendly).unwrap().hp, friendly_hp);
         assert_eq!(w.unit(foe).unwrap().hp, foe_hp);

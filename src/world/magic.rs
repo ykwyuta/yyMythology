@@ -11,6 +11,8 @@ pub enum Spell {
 
 pub const METEOR_CAST_TIME: f32 = 4.0;
 pub const METEOR_RADIUS: f32 = 3.6;
+pub const METEOR_RANGE: f32 = 7.0;
+const METEOR_COOLDOWN: f32 = 10.0;
 // 能力1.0なら、耐久1600の邑を10回の着弾で落とせる。
 const METEOR_BUILDING_DAMAGE: f32 = 160.0;
 
@@ -37,7 +39,7 @@ impl World {
     pub(super) fn begin_meteor(&mut self, i: usize, follow: Option<Target>) -> bool {
         let u = &self.units[i];
         let pos = u.pos;
-        let point = self.buildings_in_range(u.nation as usize, pos, u.def().range)
+        let point = self.buildings_in_range(u.nation as usize, pos, METEOR_RANGE)
             .min_by(|(_, a), (_, b)| {
                 (a.kind != BKind::Town).cmp(&(b.kind != BKind::Town))
                     .then_with(|| a.center().dist(pos).total_cmp(&b.center().dist(pos)))
@@ -66,7 +68,7 @@ impl World {
         }
         let u = &mut self.units[i];
         let (pos, nation, power) = (u.pos, u.nation as usize, u.power);
-        u.cooldown = 7.0;
+        u.cooldown = METEOR_COOLDOWN;
         u.order = match follow {
             Some(target) => Order::Attack(target),
             None => u.resume.take().map_or(Order::Idle, Order::AttackMove),
@@ -75,7 +77,8 @@ impl World {
         for bi in 0..self.blds.len() {
             let b = &self.blds[bi];
             if b.alive && b.dist_to_footprint(point) <= METEOR_RADIUS && self.at_war(nation, b.nation as usize) {
-                self.damage_bld(bi, METEOR_BUILDING_DAMAGE * power, nation);
+                let multiplier = if b.center() == point { 1.0 } else { 0.5 };
+                self.damage_bld(bi, METEOR_BUILDING_DAMAGE * power * multiplier, nation);
             }
         }
     }
