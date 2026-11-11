@@ -16,7 +16,7 @@ mod magic;
 mod demons;
 pub use demons::{Demon, DemonKind, DEMON_RANGE};
 pub use mythology::*;
-pub use magic::Spell;
+pub use magic::{Spell, METEOR_CAST_TIME, METEOR_RADIUS};
 mod save;
 mod units;
 mod conquest;
@@ -466,7 +466,8 @@ pub struct Msg {
 #[derive(Clone, Copy)]
 pub enum ShotEffect {
     Arrow,
-    Spell(Spell),
+    Fireball,
+    Meteor,
     Demon(DemonKind),
 }
 
@@ -1858,6 +1859,36 @@ impl World {
     }
 
     // ------------------------------------------------------------ 戦闘
+    fn strike(&mut self, i: usize, t: Target, tp: V2) {
+        let (pos, ni, kind, def) = {
+            let u = &self.units[i];
+            (u.pos, u.nation as usize, u.kind, u.def())
+        };
+        self.units[i].dir = (tp - pos).norm();
+        self.units[i].cooldown = def.cd;
+        let mods = if ni < NATIONS.len() { self.nations[ni].mil_mul * self.nations[ni].tm.atk[kind as usize] } else { 1.0 };
+        let atk = def.atk * self.units[i].power * mods * self.rng.range(0.85, 1.15);
+        let me = self.uh(i);
+        if def.range > 1.5 {
+            let effect = if self.units[i].ut == UT_MAGE { ShotEffect::Fireball } else { ShotEffect::Arrow };
+            self.shots.push(Shot { effect, a: pos, b: tp, t: 0.3 });
+        }
+        match t {
+            Target::Unit(h) => {
+                let ti = h.idx as usize;
+                let tk = self.units[ti].kind;
+                let (tx, ty) = self.units[ti].pos.tile();
+                let hill = Map::inb(tx, ty) && self.map.terrain[Map::idx(tx, ty)] == Terrain::Hill;
+                let dmg = atk * bonus(def, tk) * if hill { 0.8 } else { 1.0 };
+                self.damage_unit(ti, dmg, Some(me), ni);
+            }
+            Target::Bld(h) => {
+                let dmg = atk * def.vs_bld * 0.8;
+                self.damage_bld(h.idx as usize, dmg, ni);
+            }
+        }
+    }
+
     fn damage_unit(&mut self, ti: usize, dmg: f32, attacker: Option<Handle>, an: usize) {
         let divine = self.units[ti].divine;
         if divine && !attacker.and_then(|h| self.unit(h)).is_some_and(|a| a.hero != NONE) {
@@ -2606,32 +2637,12 @@ impl World {
                 if in_range {
                     self.units[i].dir = (tp - pos).norm();
                     if self.units[i].cooldown <= 0.0 {
-                        if self.units[i].ut == UT_MAGE {
-                            let spell = if self.player != ni && self.rng.f32() < 0.25 { Spell::Meteor } else { Spell::Fireball };
-                            self.begin_cast(i, spell, tp, Some(t));
+                        if self.units[i].ut == UT_MAGE && self.player != ni
+                            && self.rng.f32() < 0.25 && self.begin_meteor(i, Some(t))
+                        {
                             return;
                         }
-                        self.units[i].cooldown = def.cd;
-                        let mods = if ni < NATIONS.len() { self.nations[ni].mil_mul * self.nations[ni].tm.atk[kind as usize] } else { 1.0 };
-                        let atk = def.atk * self.units[i].power * mods * self.rng.range(0.85, 1.15);
-                        let me = self.uh(i);
-                        if def.range > 1.5 {
-                            self.shots.push(Shot { effect: ShotEffect::Arrow, a: pos, b: tp, t: 0.3 });
-                        }
-                        match t {
-                            Target::Unit(h) => {
-                                let ti = h.idx as usize;
-                                let tk = self.units[ti].kind;
-                                let (tx, ty) = self.units[ti].pos.tile();
-                                let hill = Map::inb(tx, ty) && self.map.terrain[Map::idx(tx, ty)] == Terrain::Hill;
-                                let dmg = atk * bonus(def, tk) * if hill { 0.8 } else { 1.0 };
-                                self.damage_unit(ti, dmg, Some(me), ni);
-                            }
-                            Target::Bld(h) => {
-                                let dmg = atk * def.vs_bld * 0.8;
-                                self.damage_bld(h.idx as usize, dmg, ni);
-                            }
-                        }
+                        self.strike(i, t, tp);
                     }
                 } else {
                     let (nav_goal, nav_r) = match t {
@@ -3179,46 +3190,86 @@ mod tests {
     }
 
     #[test]
-    fn mage_spells_resolve_after_cast_time_and_can_be_cancelled() {
+    fn fireball_is_an_immediate_single_target_ranged_attack() {
         let mut w = World::new(12345);
+        w.player = JAPAN;
         w.declare_war(JAPAN, SONG, true);
         let mage = w.spawn_unit(JAPAN, UT_MAGE, v2(300.0, 300.0), 1.0);
         let near = w.spawn_unit(SONG, UT_INF, v2(305.0, 300.0), 1.0);
-        let far = w.spawn_unit(SONG, UT_INF, v2(305.0, 302.5), 1.0);
-        let friendly = w.spawn_unit(JAPAN, UT_INF, v2(305.0, 300.0), 1.0);
+        let nearby = w.spawn_unit(SONG, UT_INF, v2(305.0, 301.0), 1.0);
         let hp = w.unit(near).unwrap().hp;
+        let nearby_hp = w.unit(nearby).unwrap().hp;
         w.rebuild_grid();
-        assert!(w.cast_nearest(JAPAN, mage, Spell::Fireball));
-        for _ in 0..44 {
-            w.update_unit(mage.idx as usize, DT);
-        }
-        assert_eq!(w.unit(near).unwrap().hp, hp);
 
+        assert!(w.cast_nearest(JAPAN, mage, Spell::Fireball));
+        let hit = w.unit(near).unwrap().hp;
+        assert!(hit < hp);
+        assert_eq!(w.unit(nearby).unwrap().hp, nearby_hp);
+        assert!(matches!(w.shots.last().unwrap().effect, ShotEffect::Fireball));
+        assert!(!matches!(w.unit(mage).unwrap().order, Order::Cast { .. }));
+        assert!(!w.cast_nearest(JAPAN, mage, Spell::Fireball));
+
+        w.order_attack(&[mage], Target::Unit(near));
+        w.unit_mut(mage).unwrap().cooldown = 0.0;
+        w.update_unit(mage.idx as usize, DT);
+        assert!(w.unit(near).unwrap().hp < hit);
+        assert!(matches!(w.unit(mage).unwrap().order, Order::Attack(_)));
+
+        let u = w.unit_mut(mage).unwrap();
+        u.cooldown = 0.0;
+        u.order = Order::Cast { spell: Spell::Fireball, point: v2(305.0, 300.0), remaining: 1.0, follow: None };
         let mut bytes = crate::save::Writer::new();
         w.save_to(&mut bytes);
         let mut w = World::load_from(12345, &mut crate::save::Reader::new(&bytes.buf)).unwrap();
-        assert!(matches!(w.unit(mage).unwrap().order, Order::Cast { spell: Spell::Fireball, .. }));
-        for _ in 0..3 {
-            w.update_unit(mage.idx as usize, DT);
-        }
-        let hit = w.unit(near).unwrap().hp;
-        assert!(hit < hp);
-        assert_eq!(w.unit(far).unwrap().hp, hp);
-        assert_eq!(w.unit(friendly).unwrap().hp, hp);
-        w.unit_mut(mage).unwrap().cooldown = 0.0;
+        let before = w.unit(near).unwrap().hp;
+        w.update_unit(mage.idx as usize, DT);
+        assert!(w.unit(near).unwrap().hp < before);
+    }
+
+    #[test]
+    fn meteor_prioritizes_towns_and_only_damages_enemy_buildings() {
+        let mut w = World::new(12345);
+        w.player = JAPAN;
+        w.declare_war(JAPAN, SONG, true);
+        w.nations[SONG].tm.def = 1.0;
+        let mage = w.spawn_unit(JAPAN, UT_MAGE, v2(300.0, 300.0), 1.0);
+        let foe = w.spawn_unit(SONG, UT_INF, v2(308.0, 300.0), 1.0);
+        let foe_hp = w.unit(foe).unwrap().hp;
+        w.rebuild_grid();
+        assert!(!w.cast_nearest(JAPAN, mage, Spell::Meteor));
+
+        let barracks = w.spawn_building(SONG, BKind::Barracks, 301, 299, true);
+        let town = w.spawn_building(SONG, BKind::Town, 307, 299, true);
+        let farm = w.spawn_building(SONG, BKind::Farm, 307, 301, true);
+        let friendly = w.spawn_building(JAPAN, BKind::Farm, 307, 297, true);
+        let [barracks_hp, town_hp, farm_hp, friendly_hp] = [barracks, town, farm, friendly].map(|h| w.bld(h).unwrap().hp);
         assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
+        assert!(matches!(w.unit(mage).unwrap().order, Order::Cast { spell: Spell::Meteor, point, .. } if point == w.bld(town).unwrap().center()));
         w.unit_mut(mage).unwrap().order = Order::Idle;
-        assert_eq!(w.unit(near).unwrap().hp, hit);
+        w.update_unit(mage.idx as usize, DT);
+        assert_eq!(w.bld(town).unwrap().hp, town_hp);
+
         assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
         for _ in 0..119 {
             w.update_unit(mage.idx as usize, DT);
         }
-        assert_eq!(w.unit(far).unwrap().hp, hp);
+        assert_eq!(w.bld(town).unwrap().hp, town_hp);
         for _ in 0..3 {
             w.update_unit(mage.idx as usize, DT);
         }
-        assert!(w.unit(far).unwrap().hp < hp);
-        assert_eq!(w.unit(friendly).unwrap().hp, hp);
+        assert!(w.bld(town).unwrap().hp < town_hp);
+        assert!(w.bld(farm).unwrap().hp < farm_hp);
+        assert_eq!(w.bld(barracks).unwrap().hp, barracks_hp);
+        assert_eq!(w.bld(friendly).unwrap().hp, friendly_hp);
+        assert_eq!(w.unit(foe).unwrap().hp, foe_hp);
+
+        for hit in 2..=10 {
+            w.unit_mut(mage).unwrap().cooldown = 0.0;
+            assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
+            w.update_unit(mage.idx as usize, METEOR_CAST_TIME);
+            let owner = if hit < 10 { SONG } else { JAPAN };
+            assert_eq!(w.bld(town).unwrap().nation as usize, owner, "after hit {hit}");
+        }
     }
 
     /// 英霊：民を生贄に呼び、能力は生贄の合計×倍率。一国一体。天の兵を傷つけられるのは英霊だけ
