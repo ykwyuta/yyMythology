@@ -3666,6 +3666,13 @@ impl Game {
         }
     }
 
+    fn unit_group_icon(&self, nation: usize, kind: UnitKind, elephant_nation: Option<usize>) -> Option<&ID2D1Bitmap> {
+        if let Some(origin) = elephant_nation.filter(|_| kind == UnitKind::Cavalry) {
+            return self.art.national_unit(&self.gfx, origin, UT_WAR_ELEPHANT, false);
+        }
+        self.art.national_unit(&self.gfx, nation, native_ut(nation, kind), false)
+    }
+
     fn render_info(&mut self, x: f32, y: f32, wd: f32) {
         let pl = self.world.player;
         let cap = self.world.power_cap();
@@ -3742,12 +3749,16 @@ impl Game {
             self.gfx.text(desc, x + 2.0, y + 106.0, wd, 38.0, Font::Small, [0.80, 0.76, 0.68, 1.0]);
         } else if self.sel.len() > 1 {
             let mut cnt = [0usize; 5];
+            let mut elephant_nation = None;
             let mut pw = 0.0;
             let mut hp = 0.0;
             let mut mhp = 0.0;
             for &h in self.sel.iter() {
                 let u = self.world.unit(h).unwrap();
                 cnt[u.kind as usize] += 1;
+                if u.ut == UT_WAR_ELEPHANT {
+                    elephant_nation.get_or_insert(u.nation as usize);
+                }
                 pw += u.power;
                 hp += u.hp;
                 mhp += u.max_hp();
@@ -3766,7 +3777,7 @@ impl Game {
                     let hov = mx >= bx0 && mx <= bx1 && my >= by0 && my <= by1;
                     self.gfx.fill_round(bx0, by0, bx1, by1, 4.0, if hov { [0.10, 0.29, 0.36, 0.98] } else { [0.055, 0.13, 0.18, 0.96] });
                     self.gfx.stroke_round(bx0, by0, bx1, by1, 4.0, 1.2, [0.40, 0.56, 0.59, 0.9]);
-                    if let Some(bmp) = self.art.national_unit(&self.gfx, pl, native_ut(pl, kinds[k]), false) {
+                    if let Some(bmp) = self.unit_group_icon(pl, kinds[k], elephant_nation) {
                         self.gfx.draw_bitmap(bmp, bx0 + 3.0, by0 + 3.0, bx0 + 41.0, by1 - 3.0);
                     }
                     let ks = format!("×{}", cnt[k]);
@@ -3904,9 +3915,13 @@ impl Game {
 
             // 自国の各兵種アイコンボタン（クリックでその兵種全体を選択）
             let mut cnt = [0usize; 5];
+            let mut elephant_nation = None;
             for u in self.world.units.iter() {
                 if u.on_map() && u.nation as usize == pl {
                     cnt[u.kind as usize] += 1;
+                    if u.ut == UT_WAR_ELEPHANT {
+                        elephant_nation = Some(pl);
+                    }
                 }
             }
             let kinds = [UnitKind::Worker, UnitKind::Infantry, UnitKind::Archer, UnitKind::Cavalry, UnitKind::Ship];
@@ -3923,7 +3938,7 @@ impl Game {
                 let hov = mx >= bx0 && mx <= bx1 && my >= by0 && my <= by1;
                 self.gfx.fill_round(bx0, by0, bx1, by1, 4.0, if hov { [0.10, 0.29, 0.36, 0.98] } else { [0.055, 0.13, 0.18, 0.96] });
                 self.gfx.stroke_round(bx0, by0, bx1, by1, 4.0, 1.1, [0.40, 0.56, 0.59, 0.85]);
-                if let Some(bmp) = self.art.national_unit(&self.gfx, pl, native_ut(pl, kinds[k]), false) {
+                if let Some(bmp) = self.unit_group_icon(pl, kinds[k], elephant_nation) {
                     self.gfx.draw_bitmap(bmp, bx0 + 3.0, by0 + 3.0, bx0 + 37.0, by1 - 3.0);
                 }
                 let ks = format!("×{}", cnt[k]);
