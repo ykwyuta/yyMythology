@@ -1,8 +1,14 @@
 //! コンピュータ国家の思考
 
-use crate::geo::{Map, NATIONS};
+use crate::geo::{Map, BRITAIN, CARTHAGE, JAPAN, JAVA, MALAY, NATIONS, NORDIC};
 use crate::rng::Rng;
 use crate::world::*;
+
+fn maritime_power(nation: usize) -> bool {
+    matches!(nation, BRITAIN | JAPAN | NORDIC | JAVA | MALAY | CARTHAGE)
+}
+
+const OVERSEAS_REACH: f32 = 160.0;
 
 pub struct AiState {
     pub rng: Rng,
@@ -277,11 +283,28 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
         }
     }
 
-    // ---- 軍の訓練
+    let maritime = maritime_power(n);
+    let coast = if (maritime || at_war_any) && w.can_build_ships(n) {
+        w.shore_water_near(home, 30)
+    } else {
+        None
+    };
+    let sea_target = coast.and_then(|port| naval_target(w, n, port));
+    let desired_ships = if maritime && coast.is_some() {
+        soldiers.len().div_ceil(SHIP_CAP).clamp(2, 3)
+    } else if sea_target.is_some() {
+        soldiers.len().div_ceil(SHIP_CAP).clamp(1, 3)
+    } else {
+        0
+    };
+    let queued_ships: usize = ports.iter().filter_map(|&p| w.bld(p)).map(|b| b.queue.len()).sum();
+    let fleet_shortage = desired_ships.saturating_sub(ships.len() + queued_ships);
+
+    // ---- 軍の訓練（艦隊に必要な人口枠を残す）
     let nat = &w.nations[n];
     let res = nat.res;
     let food_ok = res[0] > 350.0 || nat.income[0] > nat.upkeep * 1.3 + 0.3;
-    if nm < mc && res[0] >= 100.0 && food_ok && !barracks.is_empty() {
+    if nm + (fleet_shortage as u32) < mc && res[0] >= 100.0 && food_ok && !barracks.is_empty() {
         let b = barracks[a.rng.below(barracks.len() as u32) as usize];
         if w.bld(b).map_or(false, |x| x.queue.len() < 2) {
             // 作れる兵から選ぶ（自国の兵を多めに、強い兵ほど少し多めに）
@@ -309,20 +332,17 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
         }
     }
 
-    // ---- 港と船（海の向こうの敵を攻めるとき）
-    let sea_target = naval_target(w, n);
-    if sea_target.is_some() && w.can_build_ships(n) {
+    // ---- 港と船（海洋国家は平時にも準備する）
+    if desired_ships > 0 {
         let res = w.nations[n].res;
         let port_c = BKind::Port.cost();
         let port_site = w.blds.iter().any(|b| b.alive && b.nation as usize == n && b.kind == BKind::Port);
         if !port_site && res[1] >= port_c[1] && res[0] >= port_c[0] && res[2] >= port_c[2] {
             'outer: for &c in cities.iter() {
                 let cc = w.bld(c).unwrap().center();
-                if w.shore_water_near(cc, 9).is_none() {
-                    continue;
-                }
+                let Some(shore) = w.shore_water_near(cc, 14) else { continue };
                 for _ in 0..3 {
-                    if let Some((tx, ty)) = find_spot(w, n, BKind::Port, cc, 2.0, 9.0, &mut a.rng) {
+                    if let Some((tx, ty)) = find_spot(w, n, BKind::Port, shore, 1.0, 5.0, &mut a.rng) {
                         if let Ok(bh) = w.place_building(n, BKind::Port, tx, ty) {
                             if let Some(x) = workers.iter_mut().find(|x| !matches!(x.1, Order::Build(_))) {
                                 w.order_build(&[x.0], bh);
@@ -334,10 +354,8 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
                 }
             }
         }
-        let want_ships = ((soldiers.len() + SHIP_CAP - 1) / SHIP_CAP).clamp(1, 3);
-        let queued: usize = ports.iter().filter_map(|&p| w.bld(p)).map(|b| b.queue.len()).sum();
-        if ships.len() + queued < want_ships && nm < mc {
-            if let Some(&p) = ports.first() {
+        if fleet_shortage > 0 && nm < mc {
+            if let Some(&p) = ports.iter().find(|&&p| w.bld(p).is_some_and(|b| b.done())) {
                 let list = w.bld(p).map(|x| w.trainable_at(x)).unwrap_or_default();
                 if let Some(&(u, _)) = list.first() {
                     let _ = w.enqueue(p, u);
@@ -366,7 +384,7 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
     }
 
     // ---- 軍の指揮
-    let at_sea = command_navy(w, n, a, &soldiers, &ships, sea_target);
+    let at_sea = command_navy(w, n, &soldiers, &ships, sea_target);
     let soldiers: Vec<_> = soldiers.into_iter().filter(|s| !at_sea.contains(&s.0)).collect();
     command_army(w, n, a, &soldiers);
 
@@ -398,10 +416,14 @@ fn diplomacy(w: &mut World, n: usize, a: &mut AiState, nsold: usize) {
     }
     // 宣戦
     let wars = (0..NATIONS.len()).filter(|&o| w.at_war(n, o)).count();
-    if wars > 0 || years < 12.0 || nsold < 5 {
+    let maritime = maritime_power(n);
+    let fleet = maritime && w.has_ships(n);
+    let coast = if fleet { w.shore_water_near(w.nations[n].home, 30) } else { None };
+    let (min_year, min_soldiers, chance) = if coast.is_some() { (8.0, 4, 0.34) } else { (12.0, 5, 0.22) };
+    if wars > 0 || years < min_year || nsold < min_soldiers {
         return;
     }
-    if !a.rng.chance(0.22 * a.aggr) {
+    if !a.rng.chance(chance * a.aggr) {
         return;
     }
     let home = w.nations[n].home;
@@ -411,16 +433,20 @@ fn diplomacy(w: &mut World, n: usize, a: &mut AiState, nsold: usize) {
         if o == n || !on.alive || w.truce[n][o] > years || w.coalition_locked(n, o) || (o == w.player && w.protect_player) {
             continue;
         }
-        let d = on.home.dist(home);
-        if d > 110.0 {
+        let overseas = !w.same_land(on.home, home);
+        let mut d = on.home.dist(home);
+        let mut strength_limit = 0.75;
+        if overseas && maritime {
+            let Some(port) = coast else { continue };
+            let Some(city) = nearest_landing_city(w, n, port, |nation| nation == o) else { continue };
+            d = city.dist(home);
+            strength_limit = 1.0;
+        } else if d > 110.0 || (overseas && !w.can_build_ships(n)) {
             continue;
         }
-        // 海の向こうの国には、船を造れなければ攻め込まない
-        if !w.same_land(on.home, home) && !w.can_build_ships(n) {
-            continue;
-        }
-        if on.strength < my * 0.75 {
-            let score = on.strength + d * 2.0;
+        if on.strength < my * strength_limit {
+            let distance_cost = d * 2.0;
+            let score = on.strength + if maritime && overseas { distance_cost * 0.65 } else { distance_cost };
             if best.map_or(true, |b| score < b.0) {
                 best = Some((score, o));
             }
@@ -515,72 +541,169 @@ fn command_army(w: &mut World, n: usize, a: &mut AiState, soldiers: &[(Handle, O
     }
 }
 
-/// 海の向こうにしかない交戦国の城邑（船で攻める目標）
-fn naval_target(w: &World, n: usize) -> Option<V2> {
+/// 同じ海を通って上陸できる、海の向こうの最寄りの城邑。
+fn nearest_landing_city(w: &World, n: usize, port: V2, eligible: impl Fn(usize) -> bool) -> Option<V2> {
     let home = w.nations[n].home;
-    let mut best: Option<(f32, V2)> = None;
-    let mut land_target = false;
-    for b in w.blds.iter() {
-        if !b.alive || !b.kind.city() || !w.at_war(n, b.nation as usize) || b.nation as usize >= NATIONS.len() {
+    let mut best = None;
+    let mut distance = OVERSEAS_REACH;
+    for b in &w.blds {
+        if !b.alive || !b.done() || !b.kind.city() || !eligible(b.nation as usize) {
             continue;
         }
-        if w.same_land(b.center(), home) {
-            land_target = true;
-            continue;
-        }
-        let d = b.center().dist(home);
-        if d < 140.0 && best.map_or(true, |x| d < x.0) {
-            best = Some((d, b.center()));
+        let target = b.center();
+        let d = target.dist(home);
+        if d < distance && !w.same_land(target, home) && w.landing_for(port, target).is_some() {
+            distance = d;
+            best = Some(target);
         }
     }
-    // 陸の敵がいるうちは海を渡らない
-    if land_target {
-        return None;
-    }
-    best.map(|b| b.1)
+    best
 }
 
-/// 船の指揮：兵を乗せて海の向こうの敵の岸へ。乗船・航海中の兵を返す（陸の指揮から外す）
-fn command_navy(w: &mut World, n: usize, a: &mut AiState, soldiers: &[(Handle, Order, V2, f32)], ships: &[(Handle, Order, V2, usize)], target: Option<V2>) -> Vec<Handle> {
-    let mut busy: Vec<Handle> = soldiers.iter().filter(|s| matches!(s.1, Order::Board(_))).map(|s| s.0).collect();
-    if ships.is_empty() {
-        return busy;
-    }
+fn naval_target(w: &World, n: usize, port: V2) -> Option<V2> {
     let home = w.nations[n].home;
-    let Some(t) = target else {
-        // 平時：空の船は港へ戻る。乗っている兵は近くの岸に降ろす
-        for s in ships.iter() {
-            if s.1 == Order::Idle && s.3 > 0 {
-                w.order_unload(&[s.0], home);
-            }
-        }
-        return busy;
-    };
-    let _ = a;
-    for s in ships.iter() {
-        if !matches!(s.1, Order::Idle) {
+    if !maritime_power(n) && w.blds.iter().any(|b| {
+        b.alive && b.kind.city() && w.at_war(n, b.nation as usize) && w.same_land(b.center(), home)
+    }) {
+        return None;
+    }
+    nearest_landing_city(w, n, port, |nation| nation < NATIONS.len() && w.at_war(n, nation))
+}
+
+/// 母国の岸で兵を乗せ、海を渡って上陸させる。乗船命令を受けた兵は陸軍の指揮から外す。
+fn command_navy(w: &mut World, n: usize, soldiers: &[(Handle, Order, V2, f32)], ships: &[(Handle, Order, V2, usize)], target: Option<V2>) -> Vec<Handle> {
+    let mut busy: Vec<Handle> = soldiers.iter().filter(|s| matches!(s.1, Order::Board(_))).map(|s| s.0).collect();
+    let home = w.nations[n].home;
+    let maritime = maritime_power(n);
+    let guard = if maritime { 2 } else { 0 };
+
+    for &(ship, order, pos, cargo) in ships {
+        if order != Order::Idle {
             continue;
         }
-        let boarding = soldiers.iter().filter(|x| x.1 == Order::Board(s.0)).count();
-        if s.3 >= SHIP_CAP.min(4) || (s.3 > 0 && boarding == 0 && soldiers.iter().filter(|x| x.1 == Order::Idle).count() == 0) {
-            // 出航して敵の岸に兵を降ろす
-            w.order_unload(&[s.0], t);
-        } else if w.land_near(s.2, 1).is_empty() {
-            // 岸から離れていれば港の近くへ戻る
-            if let Some(p) = w.shore_water_near(home, 12) {
-                w.order_move(&[s.0], p, false);
+        let Some(target) = target else {
+            if cargo > 0 {
+                w.order_unload(&[ship], home);
+            } else if maritime {
+                if let Some(shore) = w.landing_for(pos, home).filter(|&shore| shore.dist(pos) > 5.0) {
+                    w.order_move(&[ship], shore, false);
+                }
             }
-        } else {
-            // 手の空いた兵を乗せる
-            let room = SHIP_CAP - s.3 - boarding;
-            let mut idle: Vec<&(Handle, Order, V2, f32)> = soldiers.iter().filter(|x| x.1 == Order::Idle && !busy.contains(&x.0) && w.same_land(x.2, s.2)).collect();
-            idle.sort_by(|x, y| x.2.dist(s.2).partial_cmp(&y.2.dist(s.2)).unwrap());
-            let hs: Vec<Handle> = idle.iter().take(room).map(|x| x.0).collect();
-            if !hs.is_empty() {
-                w.order_board(&hs, s.0);
-                busy.extend(hs);
-            }
+            continue;
+        };
+        if w.landing_for(pos, target).is_none() {
+            continue;
+        }
+        let boarding = soldiers.iter().filter(|s| s.1 == Order::Board(ship)).count();
+        let mut idle: Vec<_> = soldiers.iter().filter(|s| {
+            s.1 == Order::Idle && !busy.contains(&s.0) && w.same_land(s.2, home)
+        }).collect();
+        let available = idle.len().saturating_sub(guard);
+        let launch_size = if maritime { 3 } else { 4 };
+        if boarding == 0 && (cargo >= launch_size || (cargo > 0 && available == 0)) {
+            w.order_unload(&[ship], target);
+            continue;
+        }
+        let Some(shore) = w.landing_for(pos, home) else { continue };
+        if shore.dist(pos) > 5.0 || !w.land_near(pos, 2).iter().any(|&p| w.same_land(p, home)) {
+            w.order_move(&[ship], shore, false);
+            continue;
+        }
+        let room = SHIP_CAP.saturating_sub(cargo + boarding);
+        idle.sort_by(|x, y| x.2.dist(pos).total_cmp(&y.2.dist(pos)));
+        let boarding_now: Vec<Handle> = idle.iter().take(room.min(available)).map(|s| s.0).collect();
+        if !boarding_now.is_empty() {
+            w.order_board(&boarding_now, ship);
+            busy.extend(boarding_now);
         }
     }
     busy
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::geo::{GAUL, GORYEO};
+
+    #[test]
+    fn britain_and_japan_prepare_fleets_in_peacetime() {
+        for nation in [BRITAIN, JAPAN] {
+            let mut w = World::new(12345);
+            w.player = nation;
+            w.nations[nation].res = [1_000.0; 3];
+            let mut ai = AiState::new(12345);
+            for tick in 0..(95.0 / DT) as usize {
+                if tick % 60 == 0 {
+                    think(&mut w, nation, &mut ai);
+                }
+                w.step();
+                if w.has_ships(nation) {
+                    break;
+                }
+            }
+            assert!(w.has_ships(nation), "{} did not build a fleet", NATIONS[nation].name);
+        }
+    }
+
+    #[test]
+    fn britain_and_japan_land_expeditions_and_send_transports_home() {
+        for (nation, enemy) in [(BRITAIN, GAUL), (JAPAN, GORYEO)] {
+            let mut w = World::new(12345);
+            w.player = nation;
+            let home = w.nations[nation].home;
+            let harbor = w.shore_water_near(home, 30).unwrap();
+            let beach = w.land_near(harbor, 2).into_iter().find(|&p| w.same_land(p, home)).unwrap();
+            let ship_type = ROSTERS[nation].iter().copied().find(|&ut| udef(ut).class.naval()).unwrap();
+            let ship = w.spawn_unit(nation, ship_type, harbor, 1.0);
+            let troops: Vec<_> = (0..5).map(|_| w.spawn_unit(nation, UT_INF, beach, 1.0)).collect();
+            w.years = 9.0;
+            w.nations[nation].strength = 100.0;
+            w.nations[enemy].strength = 90.0;
+            for o in 0..NATIONS.len() {
+                if o != enemy {
+                    w.truce[nation][o] = 20.0;
+                }
+            }
+            let mut ai = AiState::new(12345);
+            ai.aggr = 1.0;
+            for _ in 0..30 {
+                diplomacy(&mut w, nation, &mut ai, troops.len());
+                if w.at_war(nation, enemy) {
+                    break;
+                }
+            }
+            assert!(w.at_war(nation, enemy), "fleet should make an overseas rival eligible for war");
+            let target = naval_target(&w, nation, harbor).expect("no reachable landing target");
+            assert!(w.blds.iter().any(|b| b.nation as usize == enemy && b.center() == target));
+            let snapshots: Vec<_> = troops.iter().map(|&h| (h, Order::Idle, beach, 1.0)).collect();
+            assert_eq!(command_navy(&mut w, nation, &snapshots, &[(ship, Order::Idle, harbor, 0)], Some(target)).len(), 3);
+            for _ in 0..90 {
+                w.step();
+                if w.unit(ship).unwrap().cargo.len() == 3 {
+                    break;
+                }
+            }
+            let embarked = w.unit(ship).unwrap().cargo.clone();
+            assert_eq!(embarked.len(), 3);
+            command_navy(&mut w, nation, &[], &[(ship, Order::Idle, harbor, 3)], Some(target));
+            assert_eq!(w.unit(ship).unwrap().order, Order::Unload(target));
+            for _ in 0..(220.0 / DT) as usize {
+                w.step();
+                if w.unit(ship).unwrap().cargo.is_empty() {
+                    break;
+                }
+            }
+            assert!(embarked.iter().all(|&h| w.unit(h).is_some_and(|u| {
+                u.aboard.is_none() && w.same_land(u.pos, target)
+                    && matches!(u.order, Order::AttackMove(_) | Order::Attack(_))
+            })), "{} did not land its expedition: target={target:?} ship={:?} cargo={}",
+                NATIONS[nation].name,
+                w.unit(ship).map(|u| (u.pos, u.order)),
+                w.unit(ship).map_or(0, |u| u.cargo.len()));
+            let pos = w.unit(ship).unwrap().pos;
+            command_navy(&mut w, nation, &[], &[(ship, Order::Idle, pos, 0)], Some(target));
+            assert!(matches!(w.unit(ship).unwrap().order, Order::Move(p) if w.same_land(p, home)));
+        }
+    }
 }

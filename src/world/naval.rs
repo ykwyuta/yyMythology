@@ -222,7 +222,7 @@ impl World {
     }
 
     /// 船が from の海から target の陸地へ上陸できる岸。
-    fn landing_for(&self, from: V2, target: V2) -> Option<V2> {
+    pub(crate) fn landing_for(&self, from: V2, target: V2) -> Option<V2> {
         let sea = self.sea_at(from)?;
         let land = self.land_region_at(target);
         self.shore_water_matching(target, 30, Some(sea), (land != u32::MAX).then_some(land))
