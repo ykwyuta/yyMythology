@@ -53,7 +53,7 @@ Web版では追加画像を圧縮した別ファイルとして読み込む。�
 
 ## 出典
 
-YYMongolia のコミット [`1d0faef`](https://github.com/ykwyuta/yyMongolia/commit/1d0faef) からゲーム本体、各種アセット、ビルド構成を引き継いだ。`docs/` は移植元の資料。召喚ユニット・魔法使いと、追加勢力やエジプトなどの建物は専用の画像を使用する。生成元のPNGとプロンプトは `assets/mythology/` に収録。
+YYMongolia のコミット [`1d0faef`](https://github.com/ykwyuta/yyMongolia/commit/1d0faef) からゲーム本体、各種アセット、ビルド構成を引き継いだ。`docs/` は移植元の資料。59勢力それぞれに6種類の建物と8種類のユニット画像がある。建物は建設時の勢力の様式を保ち、同じ土地の出身と分かる専用兵はその土地の装備で表示する。召喚する神々や天使にはそれぞれの姿がある。勢力別の生成元PNGとプロンプトは `assets/faction-art/` に収録。画像を再梱包する場合は `python tools/import_faction_art.py` を実行する。
 
 地図は [Natural Earth v5.1.2](https://github.com/nvkelso/natural-earth-vector/tree/v5.1.2/geojson) のパブリックドメインデータを使用。海岸線の収録範囲はヨーロッパ・アジア・アフリカ。`tools/geoprep.py` に Natural Earth の `ne_50m_admin_0_countries.geojson`、`ne_50m_lakes.geojson`、`ne_50m_rivers_lake_centerlines.geojson` の入ったディレクトリと出力先 `src/geodata.rs` を渡すと再生成できる。
 

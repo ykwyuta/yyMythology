@@ -338,11 +338,11 @@ function pickFile() {
 
 // ------------------------------------------------------------------ Rust から呼ばれる関数
 const env = {
-  js_copy_mythology_atlas: (id, ptr, len) => {
+  js_copy_mythology_atlas: (id, offset, ptr, len) => {
     const atlas = mythologyAtlases[id];
-    if (!atlas || atlas.length !== len) return 0;
+    if (!atlas || offset < 0 || len < 0 || offset + len > atlas.length) return 0;
     views();
-    u8.set(atlas, ptr);
+    u8.set(atlas.subarray(offset, offset + len), ptr);
     return 1;
   },
   js_save: (slot, p, l, mp, ml) => {
@@ -943,7 +943,7 @@ async function main() {
   ]);
   const [exports, atlases] = await Promise.all([
     loadWasm(),
-    Promise.all(['divine-v3.bgra', 'buildings-v2.bgra'].map(loadMythologyAtlas)),
+    Promise.all(['divine-v3.bgra', 'faction-buildings-v1.bgra', 'faction-units-v1.bgra'].map(loadMythologyAtlas)),
     fontWait,
     loadSlotInfo(),
   ]);

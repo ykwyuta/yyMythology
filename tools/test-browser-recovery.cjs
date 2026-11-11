@@ -12,7 +12,7 @@ function setup({ confirm = true, offline = false, cacheDenied = false, withCache
   const listeners = {};
   const button = { style: {}, addEventListener(type, fn) { (listeners[type] ??= []).push(fn); } };
   const calls = { removed: [], fetch: [], navigations: [], alerts: [] };
-  const entries = ['/game/main.js?v=old', '/game/game.wasm', '/game/divine-v1.bgra.gz?v=old', '/game/buildings-v1.bgra.gz', '/game/divine-v2.bgra.gz', '/game/buildings-v2.bgra', '/game/divine-v3.bgra.gz', '/other/main.js', '/game/save.yysav', '/game/index.html', 'https://other.test/game/main.js'];
+  const entries = ['/game/main.js?v=old', '/game/game.wasm', '/game/divine-v1.bgra.gz?v=old', '/game/buildings-v1.bgra.gz', '/game/divine-v2.bgra.gz', '/game/buildings-v2.bgra', '/game/divine-v3.bgra.gz', '/game/faction-buildings-v1.bgra.gz', '/game/faction-units-v1.bgra', '/other/main.js', '/game/save.yysav', '/game/index.html', 'https://other.test/game/main.js'];
   const caches = {
     async keys() { if (cacheDenied) throw Error('Denied'); return ['shared']; },
     async open() { return {
@@ -55,6 +55,7 @@ test('refresh removes only game assets and preserves query/hash and save stores'
     'https://example.test/game/divine-v1.bgra.gz?v=old', 'https://example.test/game/buildings-v1.bgra.gz',
     'https://example.test/game/divine-v2.bgra.gz', 'https://example.test/game/buildings-v2.bgra',
     'https://example.test/game/divine-v3.bgra.gz',
+    'https://example.test/game/faction-buildings-v1.bgra.gz', 'https://example.test/game/faction-units-v1.bgra',
   ].sort());
   assert.equal(calls.navigations.length, 1);
   const destination = new URL(calls.navigations[0]);

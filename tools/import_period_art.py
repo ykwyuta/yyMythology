@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'assets' / 'period'
 
 
-def cells(path, cols, rows, size, alpha_floor=0):
+def cells(path, cols, rows, size, alpha_floor=0, row_edges=None):
     src = Image.open(path).convert('RGBA')
     if alpha_floor:
         # Discard residual near-transparent pixels during sprite normalization.
@@ -21,11 +21,17 @@ def cells(path, cols, rows, size, alpha_floor=0):
             lambda value: round(255 * max(0, value - alpha_floor) / (255 - alpha_floor))
         )
         src.putalpha(alpha)
+    if row_edges is None:
+        row_edges = [round(y * src.height / rows) for y in range(rows + 1)]
+    if len(row_edges) != rows + 1 or row_edges[0] != 0 or row_edges[-1] != src.height:
+        raise ValueError(f'{path}: invalid row boundaries')
+    if any(a >= b for a, b in zip(row_edges, row_edges[1:])):
+        raise ValueError(f'{path}: row boundaries must increase')
     result = []
     for y in range(rows):
         for x in range(cols):
-            tile = src.crop((round(x*src.width/cols), round(y*src.height/rows),
-                             round((x+1)*src.width/cols), round((y+1)*src.height/rows)))
+            tile = src.crop((round(x*src.width/cols), row_edges[y],
+                             round((x+1)*src.width/cols), row_edges[y+1]))
             # Ignore barely visible antialiasing when finding the content bounds.
             bounds = tile.getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox()
             if bounds:
