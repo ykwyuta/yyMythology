@@ -88,8 +88,7 @@ impl Game {
                 continue;
             }
             let name = god_name(u.god)
-                .or_else(|| HEROES.get(u.hero as usize).map(|hero| crate::lang::tx(hero.name)))
-                .or_else(|| (u.ut == UT_MAGE).then(|| t!("魔法使い", "Mage", "法师")));
+                .or_else(|| HEROES.get(u.hero as usize).map(|hero| crate::lang::tx(hero.name)));
             let Some(name) = name else { continue };
             let (sx, sy) = self.world_to_screen(u.pos);
             if sx < -80.0 || sy < -40.0 || sx > w + 80.0 || sy > h + 40.0 {
