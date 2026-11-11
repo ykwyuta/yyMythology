@@ -5,6 +5,7 @@ Background extraction and all creative changes must be made with imagegen.
 Run: python tools/import_period_art.py
 """
 from pathlib import Path
+import argparse
 import json
 from PIL import Image, ImageOps, ImageDraw
 
@@ -12,8 +13,14 @@ ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'assets' / 'period'
 
 
-def cells(path, cols, rows, size):
+def cells(path, cols, rows, size, alpha_floor=0):
     src = Image.open(path).convert('RGBA')
+    if alpha_floor:
+        # Discard residual near-transparent pixels during sprite normalization.
+        alpha = src.getchannel('A').point(
+            lambda value: round(255 * max(0, value - alpha_floor) / (255 - alpha_floor))
+        )
+        src.putalpha(alpha)
     result = []
     for y in range(rows):
         for x in range(cols):
@@ -72,5 +79,26 @@ def main():
     icon.save(ROOT / 'assets' / 'app_icon.ico', sizes=[(16,16),(32,32),(48,48),(128,128),(256,256)])
 
 
+def import_hero_atlas(stem):
+    folder = ROOT / 'assets' / 'mythology'
+    manifest = json.loads((folder / f'{stem}.json').read_text(encoding='utf-8'))
+    size = manifest['cell_size']
+    sprites = []
+    for sheet in manifest['atlases']:
+        tiles = cells(folder / sheet['file'], sheet['columns'], sheet['rows'], size, alpha_floor=24)
+        if len(tiles) != len(sheet['heroes']) or any(not tile.getchannel('A').getbbox() for tile in tiles):
+            raise ValueError(f"Unexpected sprite layout in {sheet['file']}")
+        sprites.extend(bgra(tile) for tile in tiles)
+    (folder / f'{stem}.bgra').write_bytes(b''.join(sprites))
+
+
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--regional-heroes', dest='hero_atlas', action='store_const', const='regional-heroes')
+    group.add_argument('--faction-heroes', dest='hero_atlas', action='store_const', const='faction-heroes')
+    atlas = parser.parse_args().hero_atlas
+    if atlas:
+        import_hero_atlas(atlas)
+    else:
+        main()

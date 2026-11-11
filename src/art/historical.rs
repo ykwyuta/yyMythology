@@ -1,7 +1,7 @@
 //! Generated period artwork. Slots are normalized at build-authoring time, never at runtime.
 use super::*;
-use crate::geo::{AKSUM, CARTHAGE, IFE, KILWA, KUSH, MALI, ZIMBABWE};
-use crate::world::{GOD_LIMIT, PANTHEONS, UT_ARC, UT_CAV, UT_DHOW, UT_INF, UT_MAGE, UT_PUNIC_GALLEY, UT_SAILING_CANOE, UT_WORKER};
+use crate::geo::{AKSUM, BURMA, CARTHAGE, IFE, KHMER, KILWA, KURD, KUSH, MALAY, MALI, THAI, ZIMBABWE};
+use crate::world::{DemonKind, GOD_LIMIT, HEROES, ORIGINAL_HERO_COUNT, PANTHEONS, UT_ARC, UT_CAV, UT_DHOW, UT_INF, UT_MAGE, UT_PUNIC_GALLEY, UT_SAILING_CANOE, UT_WORKER};
 
 const SIZE: usize = 192;
 const CELL: usize = SIZE * SIZE * 4;
@@ -18,10 +18,30 @@ const ATLASES: [&[u8]; 10] = [
     include_bytes!("../../assets/period/ainu.bgra"),
 ];
 const EXTRA: &[u8] = include_bytes!("../../assets/period/extra.bgra");
+const HERO_SIZE: usize = 128;
+const REGIONAL_HERO_SIZE: usize = 96;
 const HEROES_RAW: &[u8] = include_bytes!("../../assets/period/heroes.bgra");
+const REGIONAL_HEROES_RAW: &[u8] = include_bytes!("../../assets/mythology/regional-heroes.bgra");
+const FACTION_HEROES_RAW: &[u8] = include_bytes!("../../assets/mythology/faction-heroes.bgra");
+// Artwork order in faction-heroes.json. The first two portraits replace older slots.
+const FACTION_HERO_SLOTS: [usize; 4] = [42, 35, 74, 75];
+const PORTRAIT_HERO_COUNT: usize = 76;
+
+fn hero_pixels(hero: usize) -> (&'static [u8], usize) {
+    let (atlas, index, size) = if let Some(index) = FACTION_HERO_SLOTS.iter().position(|&slot| slot == hero) {
+        (FACTION_HEROES_RAW, index, REGIONAL_HERO_SIZE)
+    } else if hero < ORIGINAL_HERO_COUNT {
+        (HEROES_RAW, hero, HERO_SIZE)
+    } else {
+        (REGIONAL_HEROES_RAW, hero - ORIGINAL_HERO_COUNT, REGIONAL_HERO_SIZE)
+    };
+    let cell = size * size * 4;
+    (&atlas[index * cell..(index + 1) * cell], size)
+}
 
 const DIVINE_SIZE: usize = 96;
 const BUILDING_SIZE: usize = 128;
+#[cfg(any(test, target_arch = "wasm32"))]
 const BUILDING_STYLES: usize = 19;
 const BUILDINGS_PER_STYLE: usize = 6;
 const GOD_COUNT: usize = PANTHEONS.len() * GOD_LIMIT;
@@ -29,7 +49,9 @@ const MAGE_SLOT: usize = 19 * GOD_LIMIT; // Last slot of the original sprite she
 const AFRICAN_UNIT_START: usize = GOD_COUNT + 1;
 const AFRICAN_UNIT_STYLES: usize = 3;
 const AFRICAN_UNITS_PER_STYLE: usize = 5;
-const UNIT_COUNT: usize = AFRICAN_UNIT_START + AFRICAN_UNIT_STYLES * AFRICAN_UNITS_PER_STYLE;
+const DEMON_START: usize = AFRICAN_UNIT_START + AFRICAN_UNIT_STYLES * AFRICAN_UNITS_PER_STYLE;
+#[cfg(any(test, target_arch = "wasm32"))]
+const UNIT_COUNT: usize = DEMON_START + 2;
 
 /// Atlas order in assets/mythology/generation.json. Building art follows founding origin.
 fn mythology_building_style(nation: usize) -> Option<usize> {
@@ -41,9 +63,9 @@ fn mythology_building_style(nation: usize) -> Option<usize> {
         38 | 39 => Some(4), // Norse and Germanic
         40 => Some(5),     // Baltic
         41 | 42 => Some(6), // Indic
-        43 | 44 => Some(7), // Southeast Asian
+        THAI | KHMER | 44 | BURMA | MALAY => Some(7), // Southeast Asian
         45 => Some(8),     // Arabian
-        17 | 18 | 19 | 49 => Some(9), // Mesopotamian
+        17 | 18 | 19 | KURD | 49 => Some(9), // Mesopotamian
         46 | 47 => Some(10), // Northern Asian
         21 => Some(11),    // Egyptian
         CARTHAGE => Some(12),
@@ -82,11 +104,11 @@ fn mythology_atlases() -> (std::borrow::Cow<'static, [u8]>, std::borrow::Cow<'st
 
 /// Nation order is the simulation's NATIONS/ROSTERS order. Architecture follows origin.
 pub fn culture(n: usize) -> usize {
-    const MAP: [usize; 34] = [0,1,1,1,1,3,2,7,7,8,0,0,0,0,0,1,9,4,4,4,4,4,5,4,6,6,0,4,6,6,6,5,5,1];
+    const MAP: [usize; 34] = [0,1,1,1,1,3,2,7,7,8,0,0,0,0,0,1,9,4,4,4,4,4,4,7,6,6,6,4,6,6,6,5,5,1];
     MAP.get(n).copied().unwrap_or_else(|| match n {
         34..=39 => 5,
         40 | 48 => 6,
-        41..=44 => 7,
+        41..=44 | BURMA | MALAY => 7,
         45 | 49 => 4,
         47 => 9,
         _ => 0,
@@ -115,9 +137,10 @@ impl PeriodArt {
             self.flipped.push(gfx.create_bitmap(SIZE as u32, SIZE as u32, &load_raw_sprite_bgra(raw, SIZE, true, 1.0)));
             self.fog.push(gfx.create_bitmap(SIZE as u32, SIZE as u32, &load_raw_sprite_bgra(raw, SIZE, false, 0.52)));
         }
-        for raw in HEROES_RAW.chunks_exact(128 * 128 * 4) {
-            self.heroes.push(gfx.create_bitmap(128, 128, &load_raw_sprite_bgra(raw, 128, false, 1.0)));
-            self.heroes_flip.push(gfx.create_bitmap(128, 128, &load_raw_sprite_bgra(raw, 128, true, 1.0)));
+        for hero in 0..PORTRAIT_HERO_COUNT {
+            let (raw, size) = hero_pixels(hero);
+            self.heroes.push(gfx.create_bitmap(size as u32, size as u32, &load_raw_sprite_bgra(raw, size, false, 1.0)));
+            self.heroes_flip.push(gfx.create_bitmap(size as u32, size as u32, &load_raw_sprite_bgra(raw, size, true, 1.0)));
         }
         let (divine, buildings) = mythology_atlases();
         let bitmaps = |bytes: &[u8], size: usize, flip, brightness| {
@@ -203,9 +226,20 @@ impl Art {
         self.mythology_unit(index + usize::from(index >= MAGE_SLOT), flip)
     }
 
+    pub fn demon_sprite(&self, kind: DemonKind) -> Option<&ID2D1Bitmap> {
+        let slot = match kind {
+            DemonKind::Ice => 0,
+            DemonKind::Sand => 1,
+        };
+        self.mythology_unit(DEMON_START + slot, false)
+    }
+
     /// The hero's homeland determines dress, independently of the summoning nation.
     pub fn period_hero(&self, hero: usize, flip: bool) -> Option<&ID2D1Bitmap> {
-        if hero >= crate::world::HEROES.len() { return None; }
+        if hero >= PORTRAIT_HERO_COUNT {
+            let hero = HEROES.get(hero)?;
+            return self.national_unit(hero.culture, hero.ut, flip);
+        }
         (if flip { &self.period.heroes_flip } else { &self.period.heroes }).get(hero).and_then(Option::as_ref)
     }
 }
@@ -217,7 +251,13 @@ mod tests {
     fn atlas_layout_and_nation_coverage() {
         for a in ATLASES { assert_eq!(a.len(), CELL * 12); }
         assert_eq!(EXTRA.len(), CELL * 8);
-        assert_eq!(HEROES_RAW.len(), crate::world::HEROES.len() * 128 * 128 * 4);
+        assert_eq!(HEROES_RAW.len(), ORIGINAL_HERO_COUNT * HERO_SIZE * HERO_SIZE * 4);
+        assert_eq!(REGIONAL_HEROES_RAW.len(), (PORTRAIT_HERO_COUNT - ORIGINAL_HERO_COUNT - 2) * REGIONAL_HERO_SIZE * REGIONAL_HERO_SIZE * 4);
+        assert_eq!(FACTION_HEROES_RAW.len(), FACTION_HERO_SLOTS.len() * REGIONAL_HERO_SIZE * REGIONAL_HERO_SIZE * 4);
+        for hero in 0..PORTRAIT_HERO_COUNT {
+            let (cell, _) = hero_pixels(hero);
+            assert!(cell.iter().skip(3).step_by(4).any(|&alpha| alpha > 128));
+        }
         for n in 0..crate::geo::NATIONS.len() { assert!(culture(n) < ATLASES.len()); }
         for n in 34..crate::geo::NATIONS.len() {
             assert!(mythology_building_style(n).is_some_and(|style| style < BUILDING_STYLES));

@@ -13,13 +13,15 @@ mod descent;
 mod heroes;
 mod mythology;
 mod magic;
+mod demons;
+pub use demons::{Demon, DemonKind, DEMON_RANGE};
 pub use mythology::*;
 pub use magic::Spell;
 mod save;
 mod units;
 mod conquest;
 mod naval;
-pub use history::{Chron, Person, HISTORY, INITIAL_HOUSE};
+pub use history::{Person, HISTORY, INITIAL_HOUSE};
 #[cfg(test)]
 pub use history::Fx;
 pub use trade::*;
@@ -82,8 +84,6 @@ pub const SEC_PER_YEAR: f32 = 24.0;
 pub const EMPIRE_SLOW: f32 = 2.0;
 /// 始まりの年（金の建国）
 pub const START_AD: f32 = 1115.0;
-/// 大モンゴル国の成立（チンギス・カンの即位）
-pub const EMPIRE_AD: f32 = 1206.0;
 /// この年までに天下が定まらなければ、天（テングリ）がモンゴルに降臨する（クビライの死）
 pub const END_AD: f32 = 1294.0;
 pub const DT: f32 = 1.0 / 30.0;
@@ -463,8 +463,15 @@ pub struct Msg {
     pub color: [f32; 3],
 }
 
+#[derive(Clone, Copy)]
+pub enum ShotEffect {
+    Arrow,
+    Spell(Spell),
+    Demon(DemonKind),
+}
+
 pub struct Shot {
-    pub spell: Option<Spell>,
+    pub effect: ShotEffect,
     pub a: V2,
     pub b: V2,
     pub t: f32,
@@ -516,11 +523,10 @@ pub struct World {
     pub msgs: Vec<Msg>,
     pub banner: Option<Banner>,
     banner_queue: VecDeque<Banner>,
-    /// 次に起こる史実イベント
-    hist_i: usize,
-    /// 史書（起きた出来事・起こらなかった出来事）
-    pub chronicle: Vec<Chron>,
+    // Skip flags from historical saves, retained when saving again.
+    history_skipped: Vec<bool>,
     pub shots: Vec<Shot>,
+    pub demons: Vec<Demon>,
     pub rng: Rng,
     pf: PathFinder,
     path_queue: VecDeque<Handle>,
@@ -543,8 +549,6 @@ pub struct World {
     pub descent: Option<Descent>,
     /// 撮影用：プレイヤーの国も AI が動かす
     pub ai_player: bool,
-    /// 英霊モード（ゲーム開始時に選ぶ。既定は無効）
-    pub heroic: bool,
     pub time: f32,
     pub ai: Vec<AiState>,
     /// 商人・西域の商人・山岳民と遊牧民
@@ -621,9 +625,9 @@ impl World {
             msgs: Vec::new(),
             banner: None,
             banner_queue: VecDeque::new(),
-            hist_i: 0,
-            chronicle: Vec::new(),
+            history_skipped: Vec::new(),
             shots: Vec::new(),
+            demons: Vec::new(),
             rng: Rng::new(seed as u64 * 7 + 3),
             pf: PathFinder::new(),
             path_queue: VecDeque::new(),
@@ -636,7 +640,6 @@ impl World {
             player_orders: 0,
             descent: None,
             ai_player: false,
-            heroic: false,
             time: 0.0,
             ai: Vec::new(),
             trade: Trade::new(&mut Rng::new(seed as u64 * 13 + 5)),
@@ -738,6 +741,7 @@ impl World {
                 w.found_city(i, lo, la, BKind::Town);
             }
         }
+        w.place_demons();
         w.recompute_territory();
         w.update_stats();
         w.refresh_traits();
@@ -1053,10 +1057,6 @@ impl World {
     pub fn passable_l(&self, p: V2, naval: bool) -> bool {
         let (x, y) = p.tile();
         Map::inb(x, y) && if naval { self.wcost[Map::idx(x, y)].is_finite() } else { self.cost[Map::idx(x, y)].is_finite() }
-    }
-
-    pub fn line_clear(&self, a: V2, b: V2) -> bool {
-        self.line_clear_l(a, b, false)
     }
 
     pub fn line_clear_l(&self, a: V2, b: V2, naval: bool) -> bool {
@@ -1859,16 +1859,21 @@ impl World {
 
     // ------------------------------------------------------------ 戦闘
     fn damage_unit(&mut self, ti: usize, dmg: f32, attacker: Option<Handle>, an: usize) {
+        let divine = self.units[ti].divine;
+        if divine && !attacker.and_then(|h| self.unit(h)).is_some_and(|a| a.hero != NONE) {
+            return;
+        }
+        self.apply_unit_damage(ti, if divine { dmg * 3.0 } else { dmg }, attacker, an);
+    }
+
+    fn apply_unit_damage(&mut self, ti: usize, dmg: f32, attacker: Option<Handle>, an: usize) {
         let killed;
-        // 天の兵を傷つけられるのは英霊だけ
-        let by_hero = attacker.and_then(|h| self.unit(h)).map_or(false, |a| a.hero != NONE);
         {
             let u = &mut self.units[ti];
-            if !u.alive || (u.divine && !by_hero) {
+            if !u.alive {
                 return;
             }
-            // 英霊の一撃は天の兵によく効く
-            u.hp -= if u.divine { dmg * 3.0 } else { dmg };
+            u.hp -= dmg;
             u.flash = 0.15;
             u.last_attacker = attacker;
             killed = u.hp <= 0.0;
@@ -1879,12 +1884,10 @@ impl World {
             }
         }
         if killed {
-            let vn = self.units[ti].nation as usize;
             self.kill_unit(ti);
             if an != NONE as usize {
                 self.nations[an].aggression += 1.5;
             }
-            let _ = vn;
         }
     }
 
@@ -2079,6 +2082,7 @@ impl World {
             self.separate(dt * 2.0);
         }
         self.process_paths();
+        self.update_demons(dt);
         for s in self.shots.iter_mut() {
             s.t -= dt;
         }
@@ -2205,7 +2209,7 @@ impl World {
                     b.cooldown = cd;
                     if let Some(t) = self.nearest_enemy_unit(ni, c, range) {
                         let tp = self.units[t].pos;
-                        self.shots.push(Shot { spell: None, a: c, b: tp, t: 0.25 });
+                        self.shots.push(Shot { effect: ShotEffect::Arrow, a: c, b: tp, t: 0.25 });
                         self.damage_unit(t, dmg, None, ni);
                     }
                 }
@@ -2612,7 +2616,7 @@ impl World {
                         let atk = def.atk * self.units[i].power * mods * self.rng.range(0.85, 1.15);
                         let me = self.uh(i);
                         if def.range > 1.5 {
-                            self.shots.push(Shot { spell: None, a: pos, b: tp, t: 0.3 });
+                            self.shots.push(Shot { effect: ShotEffect::Arrow, a: pos, b: tp, t: 0.3 });
                         }
                         match t {
                             Target::Unit(h) => {
@@ -3034,43 +3038,6 @@ impl World {
         true
     }
 
-    /// 大モンゴル国の成立（1206年）：時の流れが遅くなる
-    fn begin_empire(&mut self) {
-        self.era = Era::Empire;
-        self.hezong_next = self.years + 15.0;
-        let text = if self.nations[MONGOL].alive {
-            t!("オノン川の源でクリルタイが開かれ、テムジンがチンギス・カンとして即位した。大モンゴル国の時代が始まる。", "A kurultai at the source of the Onon proclaims Temüjin as Genghis Khan. The age of the Great Mongol State begins.", "斡难河源召开忽里勒台，铁木真即位为成吉思汗。大蒙古国的时代开始了。").to_string()
-        } else {
-            t!("草原に覇者は現れなかった。それでも時代は大きく動き、諸国の争いは激しさを増す。", "No conqueror rose from the steppe, yet the age turns and the wars of the states grow fiercer.", "草原上没有出现霸主，但时代依然剧变，诸国的争斗愈加激烈。").to_string()
-        };
-        self.push_msg(tf!("【大モンゴル国】{}", "[Great Mongol State] {}", "【大蒙古国】{}", text), [1.0, 0.85, 0.3]);
-        self.queue_banner(Banner { title: t!("大モンゴル国の成立", "The Great Mongol State", "大蒙古国的成立").into(), text, t: 8.0 });
-        self.update_stats();
-    }
-
-    fn found_city_free(&mut self, nation: usize, lon: f32, lat: f32) -> Option<Handle> {
-        let (fx, fy) = ll_to_tile(lon, lat);
-        let (cx, cy) = (fx as i32 - 1, fy as i32 - 1);
-        for r in 0..12i32 {
-            for dy in -r..=r {
-                for dx in -r..=r {
-                    if dx.abs() != r && dy.abs() != r {
-                        continue;
-                    }
-                    let (tx, ty) = (cx + dx, cy + dy);
-                    if !self.footprint_free(tx, ty) {
-                        continue;
-                    }
-                    let c = v2(tx as f32 + 1.0, ty as f32 + 1.0);
-                    if self.blds.iter().any(|b| b.alive && b.kind.city() && b.center().dist(c) < 6.0) {
-                        continue;
-                    }
-                    return Some(self.spawn_building(nation, BKind::Capital, tx, ty, true));
-                }
-            }
-        }
-        None
-    }
 }
 
 #[cfg(test)]
@@ -3106,7 +3073,7 @@ mod tests {
         assert!(path_reach(&w, MONGOL, KERAIT) <= 3, "モンゴル→ケレイト");
         assert!(path_reach(&w, MONGOL, SONG) <= 3, "モンゴル→宋");
         assert!(path_reach(&w, KHWAREZM, EGYPT) <= 3, "ホラズム→エジプト");
-        assert!(path_reach(&w, KIPCHAK, HUNGARY) <= 3, "キプチャク→ハンガリー");
+        assert!(path_reach(&w, COSSACK, HUNGARY) <= 3, "コサック→ハンガリー");
         assert!(w.same_land(w.nations[GORYEO].home, w.nations[MONGOL].home));
         assert!(w.same_land(w.nations[KUYE].home, w.nations[JURCHEN].home), "樺太が大陸とつながらない");
         assert!(!w.same_land(w.nations[JAPAN].home, w.nations[GORYEO].home), "日本が陸続きになっている");
@@ -3137,7 +3104,7 @@ mod tests {
         assert!(terrain_at(46.5, -20.0).passable(), "Madagascar");
         assert_eq!(terrain_at(32.7, -1.1), Terrain::Lake, "Lake Victoria");
         assert_eq!(terrain_at(13.0, 24.0), Terrain::Desert, "central Sahara");
-        assert!(w.same_land(w.nations[EGYPT].home, w.nations[JERUSALEM].home));
+        assert!(w.same_land(w.nations[EGYPT].home, w.nations[KURD].home));
         let sea_at = |lon, lat| {
             let (x, y) = ll_to_tile(lon, lat);
             w.sea_region[Map::idx(x as i32, y as i32)]
@@ -3168,7 +3135,7 @@ mod tests {
             w.step();
             assert!(w.descent.is_none());
             assert_eq!(w.era, Era::Rise);
-            assert!(w.chronicle.is_empty());
+            assert!(w.history_skipped.is_empty());
             assert!(w.nations[SONG].alive);
             assert!(w.nations[SOUTHERN_SONG].alive);
             assert_eq!(w.nations[MONGOL].bias, bias);
@@ -3260,32 +3227,50 @@ mod tests {
         let mut w = World::new(12345);
         let qi = SONG;
         let workers: Vec<Handle> = (0..w.units.len()).filter(|&i| w.units[i].alive && w.units[i].nation as usize == qi && w.units[i].kind == UnitKind::Worker).map(|i| w.uh(i)).collect();
-        assert!(w.summon_hero(qi, 3, &workers).is_err(), "英霊モードでなければ呼べない");
-        w.heroic = true;
+        let yue_fei = 8;
+        assert_eq!(w.culture_heroes(SONG).map(|(i, _)| i).collect::<Vec<_>>(),
+                   w.culture_heroes(SOUTHERN_SONG).map(|(i, _)| i).collect::<Vec<_>>());
+        for nation in 0..NATIONS.len() {
+            assert!(w.culture_heroes(nation).count() >= 3, "英雄が3人未満: {}", NATIONS[nation].name);
+        }
+        for (nation, expected) in [
+            (KURD, "サラディン"), (COSSACK, "ペトロ・サハイダーチヌイ"),
+            (THAI, "ラームカムヘーン"), (BURMA, "アノーヤター"), (MALAY, "ハン・トゥア"),
+        ] {
+            let roster: Vec<_> = w.culture_heroes(nation).map(|(_, hero)| hero.name).collect();
+            assert_eq!(roster.first().copied(), Some(expected));
+            assert!(w.nations[nation].capital.is_some(), "都がない: {}", NATIONS[nation].name);
+        }
+        assert!(!w.culture_heroes(EGYPT).any(|(_, hero)| hero.name == "サラディン"));
+        let punic_roster: Vec<_> = w.culture_heroes(CARTHAGE).map(|(_, hero)| hero.name).collect();
+        assert_eq!(punic_roster, ["ハンニバル・バルカ", "ディードー", "ヒラム1世"]);
         let (v, p) = w.sacrifice_power(qi, &workers);
+        assert!(!v.is_empty());
+        for foreign_or_unknown in [0, HEROES.len()] {
+            assert!(w.summon_hero(qi, foreign_or_unknown, &workers).is_err());
+            assert!(v.iter().all(|&h| w.unit(h).is_some()), "召喚に失敗しても生贄は残る");
+        }
         let before = w.units.iter().filter(|u| u.alive && u.nation as usize == qi && u.kind == UnitKind::Worker).count();
-        let h = w.summon_hero(qi, 3, &workers).expect("召喚できない");
+        let h = w.summon_hero(qi, yue_fei, &workers).expect("召喚できない");
         let hero = w.unit(h).unwrap();
-        assert_eq!(hero.hero, 3);
-        assert!((hero.power - p * HEROES[3].mult).abs() < 1e-3);
+        assert_eq!(hero.hero as usize, yue_fei);
+        assert!((hero.power - p * HEROES[yue_fei].mult).abs() < 1e-3);
         let after = w.units.iter().filter(|u| u.alive && u.nation as usize == qi && u.kind == UnitKind::Worker).count();
         assert_eq!(after, before - v.len(), "生贄の民が残っている");
-        // 一国一体、同じ英霊は二国に現れない
-        let more: Vec<Handle> = (0..w.units.len()).filter(|&i| w.units[i].alive && w.units[i].nation as usize == qi).map(|i| w.uh(i)).collect();
-        assert!(w.can_summon(qi, 5, &more).is_err());
-        let chu = JURCHEN;
-        let cw: Vec<Handle> = (0..w.units.len()).filter(|&i| w.units[i].alive && w.units[i].nation as usize == chu && w.units[i].kind == UnitKind::Worker).map(|i| w.uh(i)).collect();
-        assert!(w.can_summon(chu, 3, &cw).is_err(), "同じ英霊が二国に現れた");
-        assert!(w.can_summon(chu, 4, &cw).is_ok());
+        assert!(w.can_summon(qi, 9, &workers).is_err(), "一国に二体の英霊は召喚できない");
+
+        let southern_workers: Vec<Handle> = (0..w.units.len()).filter(|&i| w.units[i].alive && w.units[i].nation as usize == SOUTHERN_SONG && w.units[i].kind == UnitKind::Worker).map(|i| w.uh(i)).collect();
+        assert!(w.can_summon(SOUTHERN_SONG, yue_fei, &southern_workers).is_err(), "同じ英霊が二国に現れた");
+        assert!(w.can_summon(SOUTHERN_SONG, 9, &southern_workers).is_ok());
         // 天の兵：普通の兵では傷つかず、英霊なら傷つく
         let pos = w.unit(h).unwrap().pos;
         let g = w.spawn_unit(MONGOL, 6, pos, 12.0);
         w.unit_mut(g).unwrap().divine = true;
         let gi = g.idx as usize;
         let hp0 = w.units[gi].hp;
-        let soldier = (0..w.units.len()).find(|&i| w.units[i].alive && w.units[i].nation as usize == chu && w.units[i].kind.military()).unwrap();
+        let soldier = (0..w.units.len()).find(|&i| w.units[i].alive && w.units[i].nation as usize == JURCHEN && w.units[i].kind.military()).unwrap();
         let sh = w.uh(soldier);
-        w.damage_unit(gi, 100.0, Some(sh), chu);
+        w.damage_unit(gi, 100.0, Some(sh), JURCHEN);
         assert_eq!(w.units[gi].hp, hp0);
         w.damage_unit(gi, 100.0, Some(h), qi);
         assert!(w.units[gi].hp < hp0);
@@ -3296,11 +3281,10 @@ mod tests {
         assert!(w.hero_guarded(cap));
     }
 
-    /// 英霊モード：降臨から10年後、版図が天のモンゴルより広ければ勝利（モンゴルを滅ぼした場合）
+    /// 降臨から10年後、版図が天のモンゴルより広ければ勝利（モンゴルを滅ぼした場合）
     #[test]
     fn heroic_win_by_territory() {
         let mut w = World::new(12345);
-        w.heroic = true;
         w.player = SONG;
         w.era = Era::Empire;
         w.years = END_AD - START_AD;
@@ -3311,15 +3295,6 @@ mod tests {
         w.descent.as_mut().unwrap().start = w.years - DESCENT_YEARS - 0.5;
         w.yearly_descent();
         assert!(matches!(&w.game_over, Some((true, _))), "{:?}", w.game_over);
-        // 英霊モードでなければ、同じ状況でも勝利にはならない
-        let mut w = World::new(12345);
-        w.player = SONG;
-        w.era = Era::Empire;
-        w.years = END_AD - START_AD;
-        w.begin_descent();
-        w.descent.as_mut().unwrap().start = w.years - DESCENT_YEARS - 0.5;
-        w.yearly_descent();
-        assert!(matches!(&w.game_over, Some((false, _))) || !w.nations[SONG].alive);
     }
 
     /// 国ごとに作れる兵が違う。他国の城邑を領すると（服属）、その国の兵も作れる。船は日本・高麗・宋・南宋だけ
@@ -3592,7 +3567,9 @@ mod tests {
         for &m in c.members.iter() {
             assert!(w.war[m][SONG]);
         }
-        assert!(w.msgs.iter().any(|m| m.text.contains("反宋同盟")));
+        let name = tx(w.nations[SONG].name);
+        let league = tf!("反{}同盟", "Anti-{} League", "反{}同盟", name);
+        assert!(w.msgs.iter().any(|m| m.text.contains(&league)));
         assert!(!w.war[EGYPT][SONG]);
     }
 
@@ -3769,7 +3746,6 @@ mod tests {
         // プレイヤー不在扱い：すべての国を AI が動かす
         w.player = SOUTHERN_SONG;
         w.ai_player = true;
-        w.heroic = std::env::var("SIM_HEROIC").is_ok();
         let t0 = std::time::Instant::now();
         let years = std::env::var("SIM_YEARS").ok().and_then(|s| s.parse().ok()).unwrap_or(560.0f32);
         let mut next_report = 0.0;

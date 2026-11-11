@@ -12,7 +12,7 @@ pub(super) const TOP_H_COMPACT: f32 = 50.0;
 
 impl Game {
     /// Browser controls may reserve space only on the title screen on touch devices.
-    #[cfg_attr(windows, allow(dead_code))]
+    #[cfg(not(windows))]
     pub fn is_title_screen(&self) -> bool {
         self.screen == Screen::Title
     }
@@ -92,6 +92,7 @@ impl Game {
 
     /// タッチした場所に何があるか（実ピクセル）
     /// 0=地図 1=画面部品 2=ミニマップ 3=なぞってスクロールできる一覧 4=タイトル画面の地図
+    #[cfg(not(windows))]
     pub fn hit_kind(&self, px: f32, py: f32) -> u32 {
         let (x, y) = (px / self.gfx.ui, py / self.gfx.ui);
         let w = self.gfx.width as f32;
@@ -210,21 +211,16 @@ impl Game {
         let (w, h) = (self.gfx.width as f32, self.gfx.height as f32);
         let (x0, x1) = (px + 20.0, w - 20.0);
         let gap = 4.0;
-        // 1段目：続きから・英霊モード・チュートリアル
+        // 1段目：続きから・チュートリアル
         let ya = h - 94.0;
-        let cw = (x1 - x0 - gap * 2.0) / 3.0;
-        let hl = if self.heroic_opt { t!("英霊：オン", "Spirits: On", "英灵：开") } else { t!("英霊：オフ", "Spirits: Off", "英灵：关") };
+        let cw = (x1 - x0 - gap) / 2.0;
         let row = [
             (t!("続きから", "Continue", "继续"), Act::SaveMenu, t!("記録した対局を再開する。書き出したファイルからも読み込める", "Resume a saved game. Exported files can be loaded too", "继续已保存的对局。也可读取导出的文件")),
-            (hl, Act::ToggleHeroic, t!("英霊モード：民を生贄にしてモンゴル帝国期の将軍・帝王の英霊を呼べる（一国に一体）", "Heroic Spirits mode: sacrifice workers to summon spirits of the generals and rulers of the Mongol age (one per state)", "英灵模式：以民为祭品召唤蒙古帝国时代将领与帝王的英灵（每国一位）")),
             (t!("チュートリアル", "Tutorial", "教程"), Act::Tutorial, t!("モンゴルの君主として、操作と遊び方を1段ずつ学ぶ", "Learn the controls and the game step by step as ruler of the Mongols", "以蒙古君主身份逐步学习操作与玩法")),
         ];
         for (k, (lbl, act, tip)) in row.into_iter().enumerate() {
             let bx = x0 + k as f32 * (cw + gap);
             self.add_button(bx, ya, bx + cw, ya + 42.0, lbl, "", 0, true, act, tip);
-            if act == Act::ToggleHeroic && self.heroic_opt {
-                self.gfx.stroke_round(bx, ya, bx + cw, ya + 42.0, 3.0, 2.0, [1.0, 0.85, 0.4, 1.0]);
-            }
         }
         // 2段目：文字の大きさ・言語・全画面
         let yb = h - 48.0;

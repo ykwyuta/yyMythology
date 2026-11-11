@@ -63,10 +63,6 @@ pub struct Gfx {
     pub compact: bool,
 }
 
-pub fn col(r: f32, g: f32, b: f32, a: f32) -> [f32; 4] {
-    [r, g, b, a]
-}
-
 impl Gfx {
     pub fn new(width: u32, height: u32) -> Gfx {
         let mut g = Gfx {

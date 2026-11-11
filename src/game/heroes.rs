@@ -6,7 +6,7 @@ impl Game {
     pub(super) fn render_summon(&mut self) {
         let (w, h) = (self.gfx.width as f32, self.gfx.height as f32);
         let pl = self.world.player;
-        let pw = 1120.0f32.min(w - 20.0);
+        let pw = 840.0f32.min(w - 20.0);
         let ph = 680.0f32.min(h - 30.0);
         let x0 = (w - pw) / 2.0;
         let y0 = (h - ph) / 2.0;
@@ -29,14 +29,16 @@ impl Game {
         self.gfx.text(&head, x0 + 190.0, y0 + 16.0, pw - 300.0, 24.0, Font::Normal, tc);
 
         self.art.draw_inset_box(&self.gfx, x0 + 10.0, y0 + 48.0, x0 + pw - 10.0, y0 + ph - 10.0);
-        let cols = 2;
-        let colw = (pw - 30.0) / cols as f32;
-        let rowh = ((ph - 70.0) / ((HEROES.len() + 1) / 2) as f32).min(40.0);
-        let _era = self.world.era;
-        for (k, d) in HEROES.iter().enumerate() {
-            let c = k / ((HEROES.len() + 1) / 2);
-            let r = k % ((HEROES.len() + 1) / 2);
-            let rx = x0 + 15.0 + c as f32 * colw;
+        let heroes: Vec<_> = self.world.culture_heroes(pl).collect();
+        if heroes.is_empty() {
+            let empty = t!("この文明・民族に召喚できる英霊は登録されていません", "This civilization or people has no heroic spirits in the roster", "该文明或民族暂无可召唤的英灵");
+            self.gfx.text(empty, x0 + 24.0, y0 + 64.0, pw - 48.0, 54.0, Font::Normal, tc);
+            return;
+        }
+        let colw = pw - 30.0;
+        let rowh = ((ph - 70.0) / heroes.len() as f32).min(46.0);
+        for (r, (k, d)) in heroes.into_iter().enumerate() {
+            let rx = x0 + 15.0;
             let ry = y0 + 54.0 + r as f32 * rowh;
             if r % 2 == 0 {
                 self.gfx.fill_rect(rx, ry, rx + colw - 8.0, ry + rowh, [1.0, 1.0, 1.0, 0.04]);
@@ -53,16 +55,19 @@ impl Game {
 
             let tx = rx + isz + 10.0;
             let ny = ry + (rowh - 36.0).max(0.0) * 0.5;
-            self.gfx.text(crate::lang::tx(d.name), tx, ny, 190.0, 20.0, Font::Normal, if owner.is_some() { dim } else { gold });
-            self.gfx.text(crate::lang::tx(d.era), tx, ny + 19.0, 190.0, 17.0, Font::Small, dim);
+            let namew = (colw - isz - 122.0) * 0.47;
+            self.gfx.text(crate::lang::tx(d.name), tx, ny, namew, 20.0, Font::Normal, if owner.is_some() { dim } else { gold });
+            self.gfx.text(crate::lang::tx(d.era), tx, ny + 19.0, namew, 17.0, Font::Small, dim);
+            let stats_x = tx + namew + 8.0;
+            let stats_w = rx + colw - 98.0 - stats_x;
             let s = format!("{} ×{:.1}", crate::lang::tx(udef(d.ut).name), d.mult);
-            self.gfx.text(&s, tx + 192.0, ry + (rowh - 20.0) * 0.5, 124.0, 20.0, Font::Small, tc);
+            self.gfx.text(&s, stats_x, ny, stats_w, 20.0, Font::Small, tc);
             let st = match owner {
                 Some(o) => tf!("{}が召喚中", "with {}", "{}召唤中", crate::lang::tx(self.world.nations[o].name)),
                 None if p > 0.0 => tf!("能力 {:.1}", "power {:.1}", "能力 {:.1}", p * d.mult),
                 None => String::new(),
             };
-            self.gfx.text(&st, tx + 318.0, ry + (rowh - 20.0) * 0.5, colw - (isz + 10.0) - 412.0, 20.0, Font::Small, if owner.is_some() { [1.0, 0.6, 0.5, 1.0] } else { [0.7, 0.92, 1.0, 1.0] });
+            self.gfx.text(&st, stats_x, ny + 19.0, stats_w, 20.0, Font::Small, if owner.is_some() { [1.0, 0.6, 0.5, 1.0] } else { [0.7, 0.92, 1.0, 1.0] });
             let ok = self.world.can_summon(pl, k, &own);
             let tip = match ok {
                 Ok(()) => tf!("{}\n民{}人を生贄に捧げて召喚する（能力 {:.1}）", "{}\nSacrifice {} workers to summon (power {:.1})", "{}\n献祭{}名民召唤（能力 {:.1}）", crate::lang::tx(d.desc), victims.len(), p * d.mult),
@@ -74,9 +79,6 @@ impl Game {
 
     /// 英霊の名札（地図上）
     pub(super) fn render_hero_labels(&mut self) {
-        if !self.world.heroic {
-            return;
-        }
         let (w, h) = (self.gfx.width as f32, self.gfx.height as f32);
         let pl = self.world.player;
         let z = self.zoom;

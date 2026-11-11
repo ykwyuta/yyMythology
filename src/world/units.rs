@@ -131,11 +131,11 @@ pub const ROSTERS: &[&[u8]] = &[
     &[31, 2, 27, 30],    // アッバース朝
     &[31, 2, 27, 24],    // ゴール朝
     &[31, 2, 27, 28],    // エジプト
-    &[7, 33, 32, 34],    // エルサレム王国
-    &[31, 2, 27, 4],     // ルーム
+    &[31, 2, 27, 24],    // クルド
+    &[1, 2, 3, 23],      // タイ
     &[7, 2, 37, 36],     // ビザンツ
     &[7, 2, 39],         // グルジア
-    &[1, 4, 5],          // キプチャク
+    &[7, 2, 38, 4],      // コサック
     &[1, 2, 3],          // ブルガール
     &[7, 2, 38],         // キエフ
     &[7, 2, 38],         // ウラジーミル
@@ -166,6 +166,8 @@ pub const ROSTERS: &[&[u8]] = &[
     &[1, 2, 3, UT_DHOW], // アクスム
     &[1, 2, 3, UT_DHOW], // キルワ
     &[1, 2, 3], // グレート・ジンバブエ
+    &[1, 2, 3], // ビルマ
+    &[1, 2, 3, UT_SAILING_CANOE], // マレー
 ];
 
 /// 船の定員
@@ -192,15 +194,8 @@ pub fn native_ut(n: usize, class: UnitKind) -> u8 {
     }
 }
 
-/// その国の最も強い陸兵（史実の出来事で馳せ参じる兵）
-pub fn best_land_ut(n: usize) -> u8 {
-    ROSTERS
-        .get(n)
-        .and_then(|r| r.iter().copied().filter(|&u| udef(u).class != UnitKind::Ship).max_by(|&a, &b| (udef(a).hp * udef(a).atk).partial_cmp(&(udef(b).hp * udef(b).atk)).unwrap()))
-        .unwrap_or(UT_INF)
-}
-
-/// 船を造れる国か（自国の兵種に船がある）
+/// その国の編成に船があるか
+#[cfg(test)]
 pub fn native_ships(n: usize) -> bool {
     ROSTERS.get(n).map_or(false, |r| r.iter().any(|&u| udef(u).class == UnitKind::Ship))
 }

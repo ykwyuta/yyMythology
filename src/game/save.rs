@@ -42,9 +42,6 @@ impl Game {
         let n = &self.world.nations[self.world.player];
         let mut s = tf!("{}　第{}年　城邑{}", "{}  Year {}  {} cities", "{}　第{}年　城邑{}",
             crate::lang::tx(n.name), 1 + self.world.years as u32, n.cities);
-        if self.world.heroic {
-            s.push_str(t!("　英霊", "  Spirits", "　英灵"));
-        }
         if self.world.descent.is_some() {
             s.push_str(t!("　テングリ降臨", "  Descent", "　腾格里降临"));
         }
@@ -91,10 +88,10 @@ impl Game {
         if ver != SAVE_VERSION {
             return Err(tf!("記録の形式が違う（記録は第{}版、このゲームは第{}版）", "Different save format (the save is version {}, this game is version {})", "存档格式不同（存档为第{}版，本游戏为第{}版）", ver, SAVE_VERSION));
         }
-        let dims = [MAP_W, MAP_H, NATIONS.len(), HISTORY.len(), TRIBES.len(), HEROES.len()];
-        for d in dims {
+        let incompatible = || t!("別の版のゲームで作られた記録で、読み込めない", "This save was made by another version of the game and cannot be loaded", "该存档由其他版本的游戏创建，无法读取");
+        for d in [MAP_W, MAP_H, NATIONS.len(), HISTORY.len(), TRIBES.len(), HEROES.len()] {
             if r.usize()? != d {
-                return Err(t!("別の版のゲームで作られた記録で、読み込めない", "This save was made by another version of the game and cannot be loaded", "该存档由其他版本的游戏创建，无法读取").into());
+                return Err(incompatible().into());
             }
         }
         let seed = r.u32()?;
@@ -120,7 +117,6 @@ impl Game {
         self.tut = None;
         self.screen = Screen::Playing;
         self.title_sel = Some(self.world.player);
-        self.heroic_opt = self.world.heroic;
         self.rebuild_terrain();
         self.cam = cam;
         self.zoom = if zoom.is_finite() { zoom.clamp(1.2, 64.0) } else { 22.0 };
@@ -192,8 +188,8 @@ impl Game {
         let blds = w.blds.iter().filter(|b| b.alive).count();
         let screen = if self.screen == Screen::Playing { "対局" } else { "題字" };
         format!(
-            "画面={} 種={} 年={} 自国={} 民={} 兵={} 城邑={} 速度={} 停止={} 英霊={} 降臨={} チュートリアル={} 決着={} 選択={} 全ユニット={} 全建物={} 言語={} 窓={}x{}",
-            screen, self.seed, w.year_ad(), n.name, n.workers, n.soldiers, n.cities, self.speed, self.paused, w.heroic, w.descent.is_some(), self.tut.is_some(), w.game_over.is_some(), self.sel.len(), units, blds, crate::lang::lang().code(), self.gfx.width, self.gfx.height
+            "画面={} 種={} 年={} 自国={} 民={} 兵={} 城邑={} 速度={} 停止={} 降臨={} チュートリアル={} 決着={} 選択={} 全ユニット={} 全建物={} 言語={} 窓={}x{}",
+            screen, self.seed, w.year_ad(), n.name, n.workers, n.soldiers, n.cities, self.speed, self.paused, w.descent.is_some(), self.tut.is_some(), w.game_over.is_some(), self.sel.len(), units, blds, crate::lang::lang().code(), self.gfx.width, self.gfx.height
         )
     }
 
