@@ -61,8 +61,17 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
     let mut soldiers: Vec<(Handle, Order, V2, f32)> = Vec::new();
     let mut ships: Vec<(Handle, Order, V2, usize)> = Vec::new();
     let mut gathering = [0usize; 3];
+    let (mut mages, mut regular_soldiers) = (0, 0);
     for (i, u) in w.units.iter().enumerate() {
-        if !u.on_map() || u.nation as usize != n {
+        if !u.alive || u.nation as usize != n {
+            continue;
+        }
+        if u.ut == UT_MAGE {
+            mages += 1;
+        } else if u.kind.military() && !u.kind.naval() {
+            regular_soldiers += 1;
+        }
+        if !u.on_map() {
             continue;
         }
         let h = Handle { idx: i as u32, gen: u.gen };
@@ -97,6 +106,7 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
                 }
             }
             BKind::Barracks => {
+                mages += b.queue.iter().filter(|&&ut| ut == UT_MAGE).count();
                 if b.done() {
                     barracks.push(h)
                 }
@@ -275,7 +285,11 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
         let b = barracks[a.rng.below(barracks.len() as u32) as usize];
         if w.bld(b).map_or(false, |x| x.queue.len() < 2) {
             // 作れる兵から選ぶ（自国の兵を多めに、強い兵ほど少し多めに）
-            let list = w.bld(b).map(|x| w.trainable_at(x)).unwrap_or_default();
+            let mut list = w.bld(b).map(|x| w.trainable_at(x)).unwrap_or_default();
+            // 攻城を担う魔法使いは、護衛に回せる通常兵4体につき1体を目安とする。
+            if mages >= regular_soldiers / 4 {
+                list.retain(|&(ut, _)| ut != UT_MAGE);
+            }
             if !list.is_empty() {
                 let wt: Vec<f32> = list.iter().enumerate().map(|(k, &(_, o))| (1.0 + k as f32 * 0.25) * if o == n { 1.0 } else { 0.6 }).collect();
                 let tot: f32 = wt.iter().sum();
