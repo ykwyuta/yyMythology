@@ -96,7 +96,10 @@ impl World {
         let u = &mut self.units[i];
         let (pos, nation, power) = (u.pos, u.nation as usize, u.power);
         u.cooldown = 7.0;
-        u.order = follow.map_or(Order::Idle, Order::Attack);
+        u.order = match follow {
+            Some(target) => Order::Attack(target),
+            None => u.resume.take().map_or(Order::Idle, Order::AttackMove),
+        };
         self.shots.push(Shot { a: pos, b: point, t: 0.45, effect: ShotEffect::Meteor });
         for bi in 0..self.blds.len() {
             let b = &self.blds[bi];
