@@ -2263,9 +2263,15 @@ impl Game {
                 }
                 if started {
                     self.world.player_orders += 1;
-                    self.notice(t!("詠唱を開始", "Casting started", "开始施法"));
+                    self.notice(match spell {
+                        Spell::Fireball => t!("ファイヤーボールを発射", "Fireball fired", "已发射火球"),
+                        Spell::Meteor => t!("メテオの詠唱を開始", "Meteor casting started", "开始施放陨石术"),
+                    });
                 } else {
-                    self.notice(t!("詠唱できる魔法使いと射程内の敵が必要", "Requires a ready mage and an enemy in range", "需要可施法的法师和射程内的敌人"));
+                    self.notice(match spell {
+                        Spell::Fireball => t!("射撃可能な魔法使いと射程内の敵が必要", "Requires a ready mage and an enemy in range", "需要可射击的法师和射程内的敌人"),
+                        Spell::Meteor => t!("詠唱可能な魔法使いと射程内の敵建物が必要", "Requires a ready mage and an enemy building in range", "需要可施法的法师和射程内的敌方建筑"),
+                    });
                 }
             }
             Act::Summon => {
@@ -2526,8 +2532,8 @@ impl Game {
                 g.circle(u.pos.x, u.pos.y + 0.12, 0.56, 16, [1.0, 0.94, 0.55, 0.28]);
                 g.ring(u.pos.x, u.pos.y + 0.12, 0.56, (1.8 * px).max(0.045), 16, [1.0, 0.92, 0.48, 0.92]);
             }
-            if let Order::Cast { spell, remaining, .. } = u.order {
-                let radius = 0.48 + 0.46 * (1.0 - remaining / spell.cast_time());
+            if let Order::Cast { spell: Spell::Meteor, remaining, .. } = u.order {
+                let radius = 0.48 + 0.46 * (1.0 - remaining / METEOR_CAST_TIME);
                 g.ring(u.pos.x, u.pos.y, radius, (2.0 * px).max(0.08), 20, [0.72, 0.36, 1.0, 0.9]);
             }
             crate::art::draw_world_unit(g, u, nc, ue, &RES_COLORS, px);
@@ -2535,18 +2541,18 @@ impl Game {
         // 矢
         for s in wd.shots.iter() {
             match s.effect {
-                ShotEffect::Spell(spell) => {
+                ShotEffect::Meteor => {
                     if fog_at(s.b) == 2 {
                         let alpha = (s.t / 0.45).clamp(0.0, 1.0);
-                        let radius = spell.radius() * (1.0 - alpha * 0.65);
-                        let color = if spell == Spell::Meteor { [0.79, 0.29, 1.0, alpha] } else { [1.0, 0.48, 0.12, alpha] };
+                        let radius = METEOR_RADIUS * (1.0 - alpha * 0.65);
+                        let color = [0.79, 0.29, 1.0, alpha];
                         g.ring(s.b.x, s.b.y, radius, (3.0 * px).max(0.10), 24, color);
                         g.circle(s.b.x, s.b.y, radius * 0.4, 16, [1.0, 0.71, 0.34, alpha * 0.6]);
                     }
                     continue;
                 }
                 ShotEffect::Demon(_) => continue,
-                ShotEffect::Arrow => {}
+                ShotEffect::Arrow | ShotEffect::Fireball => {}
             }
             let t = 1.0 - s.t / 0.3;
             let p = s.a + (s.b - s.a) * t.clamp(0.0, 1.0);
@@ -2554,8 +2560,13 @@ impl Game {
                 continue;
             }
             let d = (s.b - s.a).norm();
-            g.line((p.x - d.x * 0.34, p.y - d.y * 0.34), (p.x, p.y), (2.2 * px).max(0.045), [0.85, 0.72, 0.45, 0.95]);
-            g.circle(p.x, p.y, (1.8 * px).max(0.04), 5, [1.0, 0.95, 0.65, 1.0]);
+            let (trail, tip) = if matches!(s.effect, ShotEffect::Fireball) {
+                ([1.0, 0.38, 0.08, 0.95], [1.0, 0.72, 0.23, 1.0])
+            } else {
+                ([0.85, 0.72, 0.45, 0.95], [1.0, 0.95, 0.65, 1.0])
+            };
+            g.line((p.x - d.x * 0.34, p.y - d.y * 0.34), (p.x, p.y), (2.2 * px).max(0.045), trail);
+            g.circle(p.x, p.y, (1.8 * px).max(0.04), 5, tip);
         }
         if fog_on {
             g.draw_textured(&self.fog_tex, 0.0, 0.0, mw, mh, [1.0; 4], true);
@@ -3985,9 +3996,17 @@ impl Game {
         if show_spells {
             for (i, spell) in [Spell::Fireball, Spell::Meteor].into_iter().enumerate() {
                 let (x0, y0, x1, y1) = pos(i);
-                let time = tf!("詠唱 {:.1} 秒", "Cast {:.1}s", "施法 {:.1} 秒", spell.cast_time());
-                self.add_button(x0, y0 - SPELL_ROW_H, x1, y1 - SPELL_ROW_H, spell.name(), &time, ['Z', 'X'][i] as u32, true, Act::Cast(spell),
-                    t!("射程内の敵の位置に向けて詠唱する。移動・停止で中断。", "Cast at a nearby enemy's position. Move or stop to cancel.", "向附近敌人所在位置施法，移动或停止可中断。"));
+                let (detail, tip) = match spell {
+                    Spell::Fireball => (
+                        t!("単体射撃", "Single target", "单体射击").to_string(),
+                        t!("射程内の敵1体を即座に射撃する。", "Immediately shoot one enemy in range.", "立即射击射程内的一名敌人。"),
+                    ),
+                    Spell::Meteor => (
+                        tf!("詠唱 {:.0} 秒", "Cast {:.0}s", "施法 {:.0} 秒", METEOR_CAST_TIME),
+                        t!("射程内の敵建物を狙い、邑を優先する。移動・停止で詠唱を中断。", "Target an enemy building in range, prioritizing towns. Move or stop to cancel.", "瞄准射程内的敌方建筑，优先攻击城邑。移动或停止可中断施法。"),
+                    ),
+                };
+                self.add_button(x0, y0 - SPELL_ROW_H, x1, y1 - SPELL_ROW_H, spell.name(), &detail, ['Z', 'X'][i] as u32, true, Act::Cast(spell), tip);
             }
         }
         if !own.is_empty() {
@@ -4346,9 +4365,9 @@ impl Game {
             "", 0, true, Act::RefreshCache, "");
         self.art.draw_inset_box(&self.gfx, x0 + 14.0, y0 + 46.0, x0 + pw - 14.0, y0 + ph - 14.0);
         let text = t!(
-            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。選択後、ファイヤーボール（Z、1.5秒）またはメテオ（X、4秒）で射程内の敵の位置を狙う。魔法が着弾する前に敵は移動できる。移動や停止で詠唱を中断する。\n\n■ 魔神の危険域\n氷や砂漠の魔神は、範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
-            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Select them to cast Fireball (Z, 1.5s) or Meteor (X, 4s) at nearby enemy positions. Enemies may move before impact. Move or stop to interrupt casting.\n\n■ Djinn hazards\nIce and Desert Djinn attack every unit in their range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
-            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。选中后可对附近敌人所在位置施放火球术（Z，1.5秒）或陨石术（X，4秒）。敌人可在着弹前移动。移动或停止可中断施法。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神攻击范围内所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
+            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。通常攻撃とファイヤーボール（Z）は詠唱なしの単体射撃。メテオ（X）は4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は、範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
+            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Their normal attack and Fireball (Z) are instant single-target shots. Meteor (X) takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn attack every unit in their range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
+            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。普通攻击与火球术（Z）无需吟唱，立即射击单个目标。陨石术（X）需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神攻击范围内所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
         );
         // 入りきらなければ小さい字にする
         let f = if self.gfx.measure_h(text, Font::Normal, pw - 48.0) > ph - 64.0 { Font::Small } else { Font::Normal };

@@ -112,7 +112,7 @@ pub const DICT: &[(&str, &str, &str)] = &[
     ("民で「邑」ボタン（E）を押すと新しい城邑を築けます。城邑が増えると、領土・税収・民と兵の上限が増えます。\n\n神名辞典（F3）から草原の神々を召喚できます。", "Select a worker and press E to found a town. Towns increase territory, tax revenue and population limits. Open the Divine Codex with F3 to summon the steppe gods.", "选择民后按 E 筑城。城邑增加领土、税收和人口上限。按 F3 打开神名辞典召唤草原神灵。"),
     ("目的は最後の一国となり、ユーラシアとアフリカを統一することです。\n\n困ったら F1 でヘルプ。文字が小さいときは Ctrl＋＋ で拡大、F11 で全画面にできます。\n\n「このまま続ける」で、この国のまま遊べます（他国からも攻められるようになります）。", "Unify Eurasia and Africa by becoming the last realm. Press F1 for help, Ctrl++ to enlarge text, or F11 for fullscreen. Keep playing to stay with this realm and allow other realms to attack.", "成为最后一个国家以统一欧亚非。按 F1 查看帮助，Ctrl++ 放大文字，F11 全屏。继续游戏会保留当前国家，并允许其他国家进攻。"),
     ("魔法使い", "Mage", "法师"),
-    ("ファイヤーボールとメテオを詠唱する", "Casts Fireball and Meteor", "施放火球术和陨石术"),
+    ("ファイヤーボールで射撃し、メテオで建物を攻撃する", "Fires Fireballs and casts Meteor against buildings", "发射火球，并用陨石攻击建筑"),
     ("ブリテン", "Britain", "不列颠"),
     ("ガリア", "Gaul", "高卢"),
     ("イベリア", "Iberia", "伊比利亚"),

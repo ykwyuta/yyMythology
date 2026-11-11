@@ -234,7 +234,12 @@ fn r_order(r: &mut Reader, mines: usize) -> RResult<Order> {
             };
             let point = r_v2(r)?;
             let remaining = r.f32()?;
-            if !point.x.is_finite() || !point.y.is_finite() || !(0.0..=spell.cast_time()).contains(&remaining) {
+            // ファイヤーボールの旧詠唱時間は既存セーブの読み込みにだけ使う。
+            let max_remaining = match spell {
+                Spell::Fireball => 1.5,
+                Spell::Meteor => METEOR_CAST_TIME,
+            };
+            if !point.x.is_finite() || !point.y.is_finite() || !(0.0..=max_remaining).contains(&remaining) {
                 return Err(bad("cast"));
             }
             let follow = if r.bool()? { Some(r_target(r)?) } else { None };
