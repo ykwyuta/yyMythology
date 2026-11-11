@@ -142,6 +142,8 @@ enum Act {
     TutQuit,
     Scale(i32),
     Fullscreen,
+    #[cfg(target_arch = "wasm32")]
+    RefreshCache,
     /// 表示言語を切り替える
     Lang,
     SaveMenu,
@@ -1943,6 +1945,8 @@ impl Game {
                 self.notice(&tf!("文字の大きさ ×{:.2}", "Text size ×{:.2}", "文字大小 ×{:.2}", self.gfx.ui));
             }
             Act::Fullscreen => self.gfx.toggle_fullscreen(),
+            #[cfg(target_arch = "wasm32")]
+            Act::RefreshCache => unsafe { crate::platform::js::js_refresh_cache() },
             Act::Lang => {
                 let l = crate::lang::lang().next();
                 crate::lang::set_lang(l);
@@ -4336,6 +4340,10 @@ impl Game {
         }
         self.gfx.text_shadow(t!("兵法・遊び方", "How to Play", "兵法・玩法"), x0 + 56.0, y0 + 10.0, 220.0, 34.0, Font::Big, [1.0, 0.85, 0.5, 1.0]);
         self.add_button(x0 + pw - 90.0, y0 + 10.0, x0 + pw - 14.0, y0 + 40.0, t!("閉じる", "Close", "关闭"), "", 0, true, Act::CloseOverlay, "");
+        #[cfg(target_arch = "wasm32")]
+        self.add_button(x0 + pw - 310.0, y0 + 10.0, x0 + pw - 100.0, y0 + 40.0,
+            t!("キャッシュを更新して再読み込み", "Refresh cache and reload", "刷新缓存并重新加载"),
+            "", 0, true, Act::RefreshCache, "");
         self.art.draw_inset_box(&self.gfx, x0 + 14.0, y0 + 46.0, x0 + pw - 14.0, y0 + ph - 14.0);
         let text = t!(
             "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。選択後、ファイヤーボール（Z、1.5秒）またはメテオ（X、4秒）で射程内の敵の位置を狙う。魔法が着弾する前に敵は移動できる。移動や停止で詠唱を中断する。\n\n■ 魔神の危険域\n氷や砂漠の魔神は、範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",

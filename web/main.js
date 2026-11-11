@@ -543,6 +543,7 @@ const env = {
     document.fonts.load(`400 14px ${FAMILY}`, '神话大战 Mongol').then(clearTextCaches, () => {});
   },
 
+  js_refresh_cache: () => { window.yyBrowserRecovery?.refresh?.(); },
   js_fullscreen_toggle: () => {
     if (document.fullscreenElement) document.exitFullscreen?.();
     else {
@@ -576,6 +577,7 @@ function putBgra(c, w, h, p) {
 }
 
 function showError(s) {
+  window.yyBrowserRecovery?.showFallback?.();
   loading.classList.remove('hidden');
   loadingMsg.innerHTML = '';
   const e = document.createElement('div');
@@ -970,7 +972,6 @@ async function main() {
     try {
       checkSize();
       wasm.yy_frame(dt, document.hasFocus() && pointerInside ? 1 : 0);
-      window.yyBrowserRecovery?.setTitleScreen(wasm.yy_is_title() !== 0);
     } catch (e) {
       console.error(e);
       showError(String(e && e.stack ? e.stack : e));
