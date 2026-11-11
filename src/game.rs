@@ -20,6 +20,8 @@ const TEX_SCALE: usize = 3;
 const OVERLAY_SCALE: usize = 2;
 const TOP_H: f32 = 36.0;
 const BOT_H: f32 = 176.0;
+const COMMAND_PANEL_W: f32 = 388.0;
+const SPELL_ROW_H: f32 = 50.0;
 const MM_W: f32 = 196.0;
 const MM_H: f32 = 168.0;
 
@@ -698,7 +700,12 @@ impl Game {
         if self.peace_pending() {
             return true;
         }
-        y < self.top_h() || y > self.gfx.height as f32 - BOT_H
+        let py = self.gfx.height as f32 - BOT_H;
+        y < self.top_h()
+            || y > py
+            || (x >= self.gfx.width as f32 - COMMAND_PANEL_W
+                && y >= py + 6.0 - SPELL_ROW_H
+                && self.has_selected_mage())
     }
 
     fn notice(&mut self, s: &str) {
@@ -1269,6 +1276,12 @@ impl Game {
     fn own_sel(&self) -> Vec<Handle> {
         let p = self.world.player;
         self.sel.iter().copied().filter(|&h| self.world.unit(h).map_or(false, |u| u.nation as usize == p)).collect()
+    }
+
+    fn has_selected_mage(&self) -> bool {
+        self.sel.iter().any(|&h| self.world.unit(h).is_some_and(|u| {
+            u.nation as usize == self.world.player && u.ut == UT_MAGE
+        }))
     }
 
     fn all_workers(&self) -> Vec<Handle> {
@@ -3584,17 +3597,21 @@ impl Game {
         }
 
         // 右側のコマンド欄ボックス
-        let cx0 = w - 388.0;
-        self.art.draw_inset_box(&self.gfx, cx0, py + 6.0, w - 4.0, h - 4.0);
-        self.art.draw_corner_ornaments(&self.gfx, cx0 + 2.0, py + 8.0, w - 6.0, h - 6.0, 11.0);
-        if !self.show_diplo && !self.show_help && !self.show_chron && !self.show_market && !self.show_summon && !self.show_save {
-            self.render_commands(w - 382.0, py + 12.0);
+        let cx0 = w - COMMAND_PANEL_W;
+        let show_commands = !self.overlay_open();
+        let show_spells = show_commands && self.has_selected_mage();
+        let spell_height = if show_spells { SPELL_ROW_H } else { 0.0 };
+        let cy0 = py + 6.0 - spell_height;
+        self.art.draw_inset_box(&self.gfx, cx0, cy0, w - 4.0, h - 4.0);
+        self.art.draw_corner_ornaments(&self.gfx, cx0 + 2.0, cy0 + 2.0, w - 6.0, h - 6.0, 11.0);
+        if show_commands {
+            self.render_commands(cx0 + 6.0, py + 12.0, show_spells);
         }
 
         if let Some((t, life)) = &self.notice {
             let a = life.min(1.0);
             let t = t.clone();
-            self.gfx.text_shadow(&t, w / 2.0 - 300.0, py - 34.0, 600.0, 26.0, Font::BigCenter, [1.0, 0.85, 0.5, a]);
+            self.gfx.text_shadow(&t, w / 2.0 - 300.0, py - 34.0 - spell_height, 600.0, 26.0, Font::BigCenter, [1.0, 0.85, 0.5, a]);
         }
     }
 
@@ -3927,7 +3944,7 @@ impl Game {
         }
     }
 
-    fn render_commands(&mut self, x: f32, y: f32) {
+    fn render_commands(&mut self, x: f32, y: f32, show_spells: bool) {
         let pl = self.world.player;
         let _era = self.world.era;
         let (bw, bh, gap) = (122.0, 46.0, 4.0);
@@ -3945,20 +3962,16 @@ impl Game {
         // 全軍への命令は傭兵も含む（訓練だけは傭兵を除く）
         let n_army = self.all_military().len();
         let n_trainable = n_soldiers;
-        if !own.is_empty() {
-            if own.iter().any(|&h| self.world.unit(h).is_some_and(|u| u.ut == UT_MAGE)) {
-                for (i, spell) in [Spell::Fireball, Spell::Meteor].into_iter().enumerate() {
-                    let (x0, y0, x1, y1) = pos(i + 6);
-                    let time = tf!("詠唱 {:.1} 秒", "Cast {:.1}s", "施法 {:.1} 秒", spell.cast_time());
-                    self.add_button(x0, y0, x1, y1, spell.name(), &time, ['Z', 'X'][i] as u32, true, Act::Cast(spell),
-                        t!("射程内の敵の位置に向けて詠唱する。移動・停止で中断。", "Cast at a nearby enemy's position. Move or stop to cancel.", "向附近敌人所在位置施法，移动或停止可中断。"));
-                }
-                let (x0, y0, x1, y1) = pos(5);
-                self.add_button(x0, y0, x1, y1, t!("進軍", "Attack-move", "进军"), "", 'A' as u32, true, Act::AttackMove, "");
-                let (x0, y0, x1, y1) = pos(8);
-                self.add_button(x0, y0, x1, y1, t!("停止", "Stop", "停止"), "", 'S' as u32, true, Act::Stop, "");
-                return;
+        // 詠唱ボタンは通常の命令を置き換えず、その上に並べる。
+        if show_spells {
+            for (i, spell) in [Spell::Fireball, Spell::Meteor].into_iter().enumerate() {
+                let (x0, y0, x1, y1) = pos(i);
+                let time = tf!("詠唱 {:.1} 秒", "Cast {:.1}s", "施法 {:.1} 秒", spell.cast_time());
+                self.add_button(x0, y0 - SPELL_ROW_H, x1, y1 - SPELL_ROW_H, spell.name(), &time, ['Z', 'X'][i] as u32, true, Act::Cast(spell),
+                    t!("射程内の敵の位置に向けて詠唱する。移動・停止で中断。", "Cast at a nearby enemy's position. Move or stop to cancel.", "向附近敌人所在位置施法，移动或停止可中断。"));
             }
+        }
+        if !own.is_empty() {
             let any_worker = own.iter().any(|&h| self.world.unit(h).unwrap().kind == UnitKind::Worker);
             let any_mil = own.iter().any(|&h| self.world.unit(h).unwrap().kind.military());
             let mut i = 0;
@@ -3978,7 +3991,12 @@ impl Game {
             let u0 = self.world.unit(own[0]).unwrap();
             let u0_kind = u0.kind;
             let up_cost = self.world.upgrade_cost(u0);
-            let label = if any_mil && !any_worker { t!("訓練", "Train", "训练") } else if any_worker && !any_mil { t!("教化", "Educate", "教化") } else { t!("鍛錬", "Train", "锻炼") };
+            let label = match (any_worker, any_mil) {
+                (false, true) if own.len() == n_army => t!("全軍・訓練", "All: train", "全军・训练"),
+                (false, true) => t!("訓練", "Train", "训练"),
+                (true, false) => t!("教化", "Educate", "教化"),
+                _ => t!("鍛錬", "Train", "锻炼"),
+            };
             let (x0, y0, x1, y1) = pos(i);
             self.add_button(x0, y0, x1, y1, label, &Self::cost_str(up_cost), 'T' as u32, true, Act::Upgrade, t!("選択部隊の能力を +0.5 高める（自国領内のみ）。兵は戦闘力と兵力、民は採集量が上がる。費用は現在の能力に比例し、糧・木・鉄のうち蓄えの多いものから優先して払う。", "Raises the selected units' power by +0.5 (inside your territory only). Soldiers gain strength and HP, workers gather more. The cost grows with power and is paid mostly from whichever of food, wood and iron you have most of.", "使所选单位能力+0.5（仅限己方领土内）。士兵提升战斗力与兵力，民提升采集量。费用与当前能力成正比，优先从粮、木、铁中储量较多者支付。"));
             i += 1;
