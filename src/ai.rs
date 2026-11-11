@@ -160,6 +160,55 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
         }
     }
 
+    let maritime = maritime_power(n);
+    let coast = if (maritime || at_war_any) && w.can_build_ships(n) {
+        w.shore_water_near(home, 30)
+    } else {
+        None
+    };
+    let sea_target = coast.and_then(|port| naval_target(w, n, port));
+    let desired_ships = if maritime && coast.is_some() {
+        soldiers.len().div_ceil(SHIP_CAP).clamp(2, 3)
+    } else if sea_target.is_some() {
+        soldiers.len().div_ceil(SHIP_CAP).clamp(1, 3)
+    } else {
+        0
+    };
+    let queued_ships: usize = ports.iter().filter_map(|&p| w.bld(p)).map(|b| b.queue.len()).sum();
+    let fleet_shortage = desired_ships.saturating_sub(ships.len() + queued_ships);
+
+    // ---- 港と船（海洋国家は平時にも準備する）
+    if desired_ships > 0 {
+        let res = w.nations[n].res;
+        let port_c = BKind::Port.cost();
+        let port_site = w.blds.iter().any(|b| b.alive && b.nation as usize == n && b.kind == BKind::Port);
+        if !port_site && res[1] >= port_c[1] && res[0] >= port_c[0] && res[2] >= port_c[2] {
+            'outer: for &c in cities.iter() {
+                let cc = w.bld(c).unwrap().center();
+                let Some(shore) = w.shore_water_near(cc, 14) else { continue };
+                for _ in 0..3 {
+                    if let Some((tx, ty)) = find_spot(w, n, BKind::Port, shore, 1.0, 5.0, &mut a.rng) {
+                        if let Ok(bh) = w.place_building(n, BKind::Port, tx, ty) {
+                            if let Some(x) = workers.iter_mut().find(|x| !matches!(x.1, Order::Build(_))) {
+                                w.order_build(&[x.0], bh);
+                                x.1 = Order::Build(bh);
+                            }
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+        }
+        if fleet_shortage > 0 && nm < mc {
+            if let Some(&p) = ports.iter().find(|&&p| w.bld(p).is_some_and(|b| b.done())) {
+                let list = w.bld(p).map(|x| w.trainable_at(x)).unwrap_or_default();
+                if let Some(&(u, _)) = list.first() {
+                    let _ = w.enqueue(p, u);
+                }
+            }
+        }
+    }
+
     // ---- 兵営
     let res = w.nations[n].res;
     let has_barracks_site = w.blds.iter().any(|b| b.alive && b.nation as usize == n && b.kind == BKind::Barracks);
@@ -283,23 +332,6 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
         }
     }
 
-    let maritime = maritime_power(n);
-    let coast = if (maritime || at_war_any) && w.can_build_ships(n) {
-        w.shore_water_near(home, 30)
-    } else {
-        None
-    };
-    let sea_target = coast.and_then(|port| naval_target(w, n, port));
-    let desired_ships = if maritime && coast.is_some() {
-        soldiers.len().div_ceil(SHIP_CAP).clamp(2, 3)
-    } else if sea_target.is_some() {
-        soldiers.len().div_ceil(SHIP_CAP).clamp(1, 3)
-    } else {
-        0
-    };
-    let queued_ships: usize = ports.iter().filter_map(|&p| w.bld(p)).map(|b| b.queue.len()).sum();
-    let fleet_shortage = desired_ships.saturating_sub(ships.len() + queued_ships);
-
     // ---- 軍の訓練（艦隊に必要な人口枠を残す）
     let nat = &w.nations[n];
     let res = nat.res;
@@ -327,38 +359,6 @@ fn think(w: &mut World, n: usize, a: &mut AiState) {
                 }
                 if w.enqueue(b, pick).is_err() {
                     let _ = w.enqueue(b, list[0].0);
-                }
-            }
-        }
-    }
-
-    // ---- 港と船（海洋国家は平時にも準備する）
-    if desired_ships > 0 {
-        let res = w.nations[n].res;
-        let port_c = BKind::Port.cost();
-        let port_site = w.blds.iter().any(|b| b.alive && b.nation as usize == n && b.kind == BKind::Port);
-        if !port_site && res[1] >= port_c[1] && res[0] >= port_c[0] && res[2] >= port_c[2] {
-            'outer: for &c in cities.iter() {
-                let cc = w.bld(c).unwrap().center();
-                let Some(shore) = w.shore_water_near(cc, 14) else { continue };
-                for _ in 0..3 {
-                    if let Some((tx, ty)) = find_spot(w, n, BKind::Port, shore, 1.0, 5.0, &mut a.rng) {
-                        if let Ok(bh) = w.place_building(n, BKind::Port, tx, ty) {
-                            if let Some(x) = workers.iter_mut().find(|x| !matches!(x.1, Order::Build(_))) {
-                                w.order_build(&[x.0], bh);
-                                x.1 = Order::Build(bh);
-                            }
-                            break 'outer;
-                        }
-                    }
-                }
-            }
-        }
-        if fleet_shortage > 0 && nm < mc {
-            if let Some(&p) = ports.iter().find(|&&p| w.bld(p).is_some_and(|b| b.done())) {
-                let list = w.bld(p).map(|x| w.trainable_at(x)).unwrap_or_default();
-                if let Some(&(u, _)) = list.first() {
-                    let _ = w.enqueue(p, u);
                 }
             }
         }
@@ -627,8 +627,8 @@ mod tests {
     use crate::geo::{GAUL, GORYEO};
 
     #[test]
-    fn britain_and_japan_prepare_fleets_in_peacetime() {
-        for nation in [BRITAIN, JAPAN] {
+    fn maritime_ai_prepares_fleets_in_peacetime() {
+        for nation in [BRITAIN, JAPAN, JAVA] {
             let mut w = World::new(12345);
             w.player = nation;
             w.nations[nation].res = [1_000.0; 3];
@@ -642,13 +642,17 @@ mod tests {
                     break;
                 }
             }
-            assert!(w.has_ships(nation), "{} did not build a fleet", NATIONS[nation].name);
+            let ports: Vec<_> = w.blds.iter().filter(|b| b.alive && b.nation as usize == nation && b.kind == BKind::Port)
+                .map(|b| (b.center(), b.progress, b.queue.clone(), b.queue_t)).collect();
+            assert!(w.has_ships(nation), "{} did not build a fleet: ports={ports:?} res={:?} cap={} soldiers={} queued={}",
+                NATIONS[nation].name, w.nations[nation].res, w.nations[nation].mil_cap(),
+                w.nations[nation].soldiers, w.nations[nation].q_soldiers);
         }
     }
 
     #[test]
-    fn britain_and_japan_land_expeditions_and_send_transports_home() {
-        for (nation, enemy) in [(BRITAIN, GAUL), (JAPAN, GORYEO)] {
+    fn maritime_ai_lands_expeditions_and_sends_transports_home() {
+        for (nation, enemy) in [(BRITAIN, GAUL), (JAPAN, GORYEO), (JAVA, MALAY)] {
             let mut w = World::new(12345);
             w.player = nation;
             let home = w.nations[nation].home;
