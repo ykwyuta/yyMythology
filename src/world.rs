@@ -3209,15 +3209,16 @@ mod tests {
         let nearby_hp = w.unit(nearby).unwrap().hp;
         w.rebuild_grid();
 
-        assert!(w.cast_nearest(JAPAN, mage, Spell::Fireball));
+        w.order_attack(&[mage], Target::Unit(near));
+        w.update_unit(mage.idx as usize, DT);
         let hit = w.unit(near).unwrap().hp;
         assert!(hit < hp);
         assert_eq!(w.unit(nearby).unwrap().hp, nearby_hp);
         assert!(matches!(w.shots.last().unwrap().effect, ShotEffect::Fireball));
         assert!(!matches!(w.unit(mage).unwrap().order, Order::Cast { .. }));
-        assert!(!w.cast_nearest(JAPAN, mage, Spell::Fireball));
+        w.update_unit(mage.idx as usize, DT);
+        assert_eq!(w.unit(near).unwrap().hp, hit);
 
-        w.order_attack(&[mage], Target::Unit(near));
         w.unit_mut(mage).unwrap().cooldown = 0.0;
         w.update_unit(mage.idx as usize, DT);
         assert!(w.unit(near).unwrap().hp < hit);
@@ -3284,20 +3285,23 @@ mod tests {
         let foe = w.spawn_unit(SONG, UT_INF, v2(308.0, 300.0), 1.0);
         let foe_hp = w.unit(foe).unwrap().hp;
         w.rebuild_grid();
-        assert!(!w.cast_nearest(JAPAN, mage, Spell::Meteor));
+        w.unit_mut(mage).unwrap().scan_t = 0.0;
+        w.update_unit(mage.idx as usize, DT);
+        assert!(!matches!(w.unit(mage).unwrap().order, Order::Cast { .. }));
 
         let barracks = w.spawn_building(SONG, BKind::Barracks, 301, 299, true);
         let town = w.spawn_building(SONG, BKind::Town, 307, 299, true);
         let farm = w.spawn_building(SONG, BKind::Farm, 307, 301, true);
         let friendly = w.spawn_building(JAPAN, BKind::Farm, 307, 297, true);
         let [barracks_hp, town_hp, farm_hp, friendly_hp] = [barracks, town, farm, friendly].map(|h| w.bld(h).unwrap().hp);
-        assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
+        w.update_unit(mage.idx as usize, DT);
         assert!(matches!(w.unit(mage).unwrap().order, Order::Cast { spell: Spell::Meteor, point, .. } if point == w.bld(town).unwrap().center()));
         w.order_move(&[mage], v2(295.0, 300.0), false);
         w.update_unit(mage.idx as usize, DT);
         assert_eq!(w.bld(town).unwrap().hp, town_hp);
 
-        assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
+        w.unit_mut(mage).unwrap().order = Order::Attack(Target::Bld(barracks));
+        w.update_unit(mage.idx as usize, DT);
         for _ in 0..119 {
             w.update_unit(mage.idx as usize, DT);
         }
@@ -3313,7 +3317,7 @@ mod tests {
 
         for hit in 2..=10 {
             w.unit_mut(mage).unwrap().cooldown = 0.0;
-            assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
+            w.update_unit(mage.idx as usize, DT);
             w.update_unit(mage.idx as usize, METEOR_CAST_TIME);
             let owner = if hit < 10 { SONG } else { JAPAN };
             assert_eq!(w.bld(town).unwrap().nation as usize, owner, "after hit {hit}");
