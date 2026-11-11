@@ -1,0 +1,13 @@
+{
+  "generator": "OpenAI ImageGen (built-in)",
+  "sources": [
+    {
+      "file": "icon.png",
+      "prompt": "Square original polished app icon for Japanese mythology strategy game. Bold centered antique gold celestial compass sigil with a brilliant cyan jewel, a sun disc and two sharply simplified upward golden wings, deep blue-black stone background with subtle texture. Bold silhouettes readable at 16 pixels, flat front view, minimal composition, centered within middle 65 percent for Android maskable icon, full bleed dark navy square, no border, no text, no typography, no letters, no existing logos."
+    },
+    {
+      "file": "startup.png",
+      "prompt": "Wide cinematic original fantasy strategy game startup key art, classic painterly game illustration. In a nighttime world of continents, snow ridges on left, ochre desert ridges on right, blue seas and marble temple ruins in foreground, a single ornate celestial ring rises above the horizon and glows with luminous teal and warm gold magic. Strong large shapes and atmosphere, distinct warm gold and midnight blue palette, hero composition in central 50 percent for mobile crop, edges dark. High production value, no text, no labels, no lettering, no border, no interface, landscape format."
+    }
+  ]
+}

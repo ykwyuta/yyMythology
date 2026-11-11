@@ -76,9 +76,7 @@ pub struct Art {
     gen: u32,
     pub hud_stone: Option<ID2D1Bitmap>,
     pub panel_wood: Option<ID2D1Bitmap>,
-    pub title_crest: Option<ID2D1Bitmap>,
-    /// 英語の題字用（扁額を広げたもの）
-    pub title_crest_wide: Option<ID2D1Bitmap>,
+    pub title_art: Option<ID2D1Bitmap>,
     pub btn_norm: Option<ID2D1Bitmap>,
     pub btn_hover: Option<ID2D1Bitmap>,
     pub btn_dis: Option<ID2D1Bitmap>,
@@ -440,26 +438,10 @@ fn gen_button_tex(w: usize, h: usize, state: u8) -> Vec<u32> {
     cv.to_bgra_premul()
 }
 
-/// タイトル画面用の春秋戦国・青銅鼎と戈の紋章バナー
-/// 題字の飾りの扁額の内寸（幅）。wide は英語の題字用
-pub const TITLE_PLAQUE_W: f32 = 292.0;
-pub const TITLE_PLAQUE_W_WIDE: f32 = 292.0;
-
-fn gen_title_crest(_wide: bool) -> Vec<u32> {
-    let mut cv = Canvas::new(340, 124);
-    let gold = [0.79, 0.69, 0.46, 1.0];
-    // A spare horizon and two horsehair standards, rather than an ancient Chinese plaque.
-    cv.capsule(24.0, 106.0, 316.0, 106.0, 0.7, gold);
-    for x in [14.0, 326.0] {
-        cv.capsule(x, 22.0, x, 95.0, 1.2, gold);
-        cv.poly(&[(x, 14.0), (x-4.0, 25.0), (x+4.0, 25.0)], gold);
-        cv.capsule(x-8.0, 32.0, x+8.0, 32.0, 1.0, gold);
-        for dx in [-6.0, -3.0, 0.0, 3.0, 6.0] {
-            cv.capsule(x+dx, 34.0, x+dx, 57.0-dx.abs(), 1.2, [0.85, 0.86, 0.78, 0.9]);
-        }
-    }
-    cv.to_bgra_premul()
-}
+const TITLE_ART_W: u32 = 344;
+const TITLE_ART_H: u32 = 122;
+const TITLE_ART_BGRA: &[u8; (TITLE_ART_W * TITLE_ART_H * 4) as usize] =
+    include_bytes!("../assets/brand/title-art.bgra");
 
 /// 64x64 アイコンに共通の Age of Empires 風額縁と背景グラデーションを描く
 fn icon_backdrop(cv: &mut Canvas, top: [f32; 3], bot: [f32; 3], glow: [f32; 3]) {
@@ -767,8 +749,7 @@ impl Art {
             period: PeriodArt::default(),
             hud_stone: None,
             panel_wood: None,
-            title_crest: None,
-            title_crest_wide: None,
+            title_art: None,
             btn_norm: None,
             btn_hover: None,
             btn_dis: None,
@@ -789,8 +770,11 @@ impl Art {
         self.period.load(gfx);
         self.hud_stone = gfx.create_bitmap(256, 128, &gen_hud_stone(256, 128));
         self.panel_wood = gfx.create_bitmap(256, 128, &gen_panel_wood(256, 128));
-        self.title_crest = gfx.create_bitmap(340, 124, &gen_title_crest(false));
-        self.title_crest_wide = gfx.create_bitmap(340, 124, &gen_title_crest(true));
+        let title_pixels: Vec<u32> = TITLE_ART_BGRA
+            .chunks_exact(4)
+            .map(|p| u32::from_le_bytes([p[0], p[1], p[2], p[3]]))
+            .collect();
+        self.title_art = gfx.create_bitmap(TITLE_ART_W, TITLE_ART_H, &title_pixels);
         self.btn_norm = gfx.create_bitmap(128, 48, &gen_button_tex(128, 48, 0));
         self.btn_hover = gfx.create_bitmap(128, 48, &gen_button_tex(128, 48, 1));
         self.btn_dis = gfx.create_bitmap(128, 48, &gen_button_tex(128, 48, 2));
