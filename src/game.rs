@@ -21,7 +21,6 @@ const OVERLAY_SCALE: usize = 2;
 const TOP_H: f32 = 36.0;
 const BOT_H: f32 = 176.0;
 const COMMAND_PANEL_W: f32 = 388.0;
-const SPELL_ROW_H: f32 = 50.0;
 const MM_W: f32 = 196.0;
 const MM_H: f32 = 168.0;
 
@@ -136,7 +135,6 @@ enum Act {
     Summon,
     SummonHero(usize),
     SummonGod(u8),
-    Cast(Spell),
     Tutorial,
     TutNext,
     TutQuit,
@@ -702,12 +700,7 @@ impl Game {
         if self.peace_pending() {
             return true;
         }
-        let py = self.gfx.height as f32 - BOT_H;
-        y < self.top_h()
-            || y > py
-            || (x >= self.gfx.width as f32 - COMMAND_PANEL_W
-                && y >= py + 6.0 - SPELL_ROW_H
-                && self.has_selected_mage())
+        y < self.top_h() || y > self.gfx.height as f32 - BOT_H
     }
 
     fn notice(&mut self, s: &str) {
@@ -1278,12 +1271,6 @@ impl Game {
     fn own_sel(&self) -> Vec<Handle> {
         let p = self.world.player;
         self.sel.iter().copied().filter(|&h| self.world.unit(h).map_or(false, |u| u.nation as usize == p)).collect()
-    }
-
-    fn has_selected_mage(&self) -> bool {
-        self.sel.iter().any(|&h| self.world.unit(h).is_some_and(|u| {
-            u.nation as usize == self.world.player && u.ut == UT_MAGE
-        }))
     }
 
     fn all_workers(&self) -> Vec<Handle> {
@@ -2256,24 +2243,6 @@ impl Game {
                     self.set_sel(vec![h]);
                 }
             }
-            Act::Cast(spell) => {
-                let mut started = false;
-                for h in self.own_sel() {
-                    started |= self.world.cast_nearest(pl, h, spell);
-                }
-                if started {
-                    self.world.player_orders += 1;
-                    self.notice(match spell {
-                        Spell::Fireball => t!("ファイヤーボールを発射", "Fireball fired", "已发射火球"),
-                        Spell::Meteor => t!("メテオの詠唱を開始", "Meteor casting started", "开始施放陨石术"),
-                    });
-                } else {
-                    self.notice(match spell {
-                        Spell::Fireball => t!("射撃可能な魔法使いと射程内の敵が必要", "Requires a ready mage and an enemy in range", "需要可射击的法师和射程内的敌人"),
-                        Spell::Meteor => t!("詠唱可能な魔法使いと射程内の敵建物が必要", "Requires a ready mage and an enemy building in range", "需要可施法的法师和射程内的敌方建筑"),
-                    });
-                }
-            }
             Act::Summon => {
                 self.show_summon = !self.show_summon;
                 self.show_diplo = false;
@@ -3124,12 +3093,12 @@ impl Game {
             let sx = (x1 - 4.0 - sw).min(tx0 + 2.0).max(x0 + 4.0);
             self.gfx.text(sub, sx, y0 + bh * 0.53, x1 - sx, bh * 0.45, Font::Small, [tc[0] * 0.92, tc[1] * 0.86, tc[2] * 0.68, 1.0]);
         }
-        if (0x41..=0x5A).contains(&key) && !(self.gfx.compact && matches!(act, Act::Cast(_))) {
+        if (0x41..=0x5A).contains(&key) {
             let ks = ((key as u8) as char).to_string();
             self.gfx.fill_round(x0 + 2.0, y0 + 2.0, x0 + 15.0, y0 + 15.0, 2.0, [0.08, 0.06, 0.04, 0.84]);
             self.gfx.text(&ks, x0 + 4.0, y0 + 1.0, 11.0, 14.0, Font::Small, [1.0, 0.88, 0.45, 0.98]);
         }
-        if hover && !tip.is_empty() && !matches!(act, Act::Cast(_)) {
+        if hover && !tip.is_empty() {
             self.notice = None;
         }
         self.buttons.push(Button { x0, y0, x1, y1, label: label.to_string(), key, enabled, act, tip: tip.to_string() });
@@ -3613,20 +3582,17 @@ impl Game {
 
         // 右側のコマンド欄ボックス
         let cx0 = w - COMMAND_PANEL_W;
-        let show_commands = !self.overlay_open();
-        let show_spells = show_commands && self.has_selected_mage();
-        let spell_height = if show_spells { SPELL_ROW_H } else { 0.0 };
-        let cy0 = py + 6.0 - spell_height;
+        let cy0 = py + 6.0;
         self.art.draw_inset_box(&self.gfx, cx0, cy0, w - 4.0, h - 4.0);
         self.art.draw_corner_ornaments(&self.gfx, cx0 + 2.0, cy0 + 2.0, w - 6.0, h - 6.0, 11.0);
-        if show_commands {
-            self.render_commands(cx0 + 6.0, py + 12.0, show_spells);
+        if !self.overlay_open() {
+            self.render_commands(cx0 + 6.0, py + 12.0);
         }
 
         if let Some((t, life)) = &self.notice {
             let a = life.min(1.0);
             let t = t.clone();
-            self.gfx.text_shadow(&t, w / 2.0 - 300.0, py - 34.0 - spell_height, 600.0, 26.0, Font::BigCenter, [1.0, 0.85, 0.5, a]);
+            self.gfx.text_shadow(&t, w / 2.0 - 300.0, py - 34.0, 600.0, 26.0, Font::BigCenter, [1.0, 0.85, 0.5, a]);
         }
     }
 
@@ -3974,7 +3940,7 @@ impl Game {
         }
     }
 
-    fn render_commands(&mut self, x: f32, y: f32, show_spells: bool) {
+    fn render_commands(&mut self, x: f32, y: f32) {
         let pl = self.world.player;
         let _era = self.world.era;
         let (bw, bh, gap) = (122.0, 46.0, 4.0);
@@ -3992,23 +3958,6 @@ impl Game {
         // 全軍への命令は傭兵も含む（訓練だけは傭兵を除く）
         let n_army = self.all_military().len();
         let n_trainable = n_soldiers;
-        // 詠唱ボタンは通常の命令を置き換えず、その上に並べる。
-        if show_spells {
-            for (i, spell) in [Spell::Fireball, Spell::Meteor].into_iter().enumerate() {
-                let (x0, y0, x1, y1) = pos(i);
-                let (detail, tip) = match spell {
-                    Spell::Fireball => (
-                        t!("単体射撃", "Single target", "单体射击").to_string(),
-                        t!("射程内の敵1体を即座に射撃する。", "Immediately shoot one enemy in range.", "立即射击射程内的一名敌人。"),
-                    ),
-                    Spell::Meteor => (
-                        tf!("詠唱 {:.0} 秒", "Cast {:.0}s", "施法 {:.0} 秒", METEOR_CAST_TIME),
-                        t!("射程内の敵建物を狙い、邑を優先する。移動・停止で詠唱を中断。", "Target an enemy building in range, prioritizing towns. Move or stop to cancel.", "瞄准射程内的敌方建筑，优先攻击城邑。移动或停止可中断施法。"),
-                    ),
-                };
-                self.add_button(x0, y0 - SPELL_ROW_H, x1, y1 - SPELL_ROW_H, spell.name(), &detail, ['Z', 'X'][i] as u32, true, Act::Cast(spell), tip);
-            }
-        }
         if !own.is_empty() {
             let any_worker = own.iter().any(|&h| self.world.unit(h).unwrap().kind == UnitKind::Worker);
             let any_mil = own.iter().any(|&h| self.world.unit(h).unwrap().kind.military());
@@ -4365,9 +4314,9 @@ impl Game {
             "", 0, true, Act::RefreshCache, "");
         self.art.draw_inset_box(&self.gfx, x0 + 14.0, y0 + 46.0, x0 + pw - 14.0, y0 + ph - 14.0);
         let text = t!(
-            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。通常攻撃とファイヤーボール（Z）は詠唱なしの単体射撃。メテオ（X）は4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は、範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
-            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Their normal attack and Fireball (Z) are instant single-target shots. Meteor (X) takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn attack every unit in their range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
-            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。普通攻击与火球术（Z）无需吟唱，立即射击单个目标。陨石术（X）需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神攻击范围内所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
+            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。自動戦闘では射程内の敵建物にメテオを優先し、敵建物がなければ敵部隊にファイヤーボールを放つ。ファイヤーボールは詠唱なしの単体射撃。メテオは4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は、範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
+            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Mages prioritize Meteor if an enemy building is in range. Otherwise they fire Fireball at enemy troops. Fireball is an instant single-target shot. Meteor takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn attack every unit in their range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
+            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。射程内有敌方建筑时，法师优先自动施放陨石术，否则向敌军发射火球。火球术无需吟唱，立即射击单个目标。陨石术需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神攻击范围内所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
         );
         // 入りきらなければ小さい字にする
         let f = if self.gfx.measure_h(text, Font::Normal, pw - 48.0) > ph - 64.0 { Font::Small } else { Font::Normal };

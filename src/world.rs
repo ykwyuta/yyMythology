@@ -2545,6 +2545,8 @@ impl World {
         let order = self.units[i].order;
         let ni = self.units[i].nation as usize;
         let kind = self.units[i].kind;
+        let mage = self.units[i].ut == UT_MAGE;
+        let sight = if mage { self.units[i].def().range.max(kind.sight()) } else { kind.sight() };
         match order {
             Order::Cast { spell, point, remaining, follow } => {
                 self.update_cast(i, spell, point, remaining - dt, follow);
@@ -2552,7 +2554,11 @@ impl World {
             Order::Idle => {
                 if kind.military() && self.units[i].scan_t <= 0.0 {
                     self.units[i].scan_t = 0.5;
-                    if let Some(t) = self.nearest_enemy_unit(ni, self.units[i].pos, kind.sight()) {
+                    if mage && self.units[i].cooldown <= 0.0 && self.begin_meteor(i, None) {
+                        self.units[i].resume = None;
+                        return;
+                    }
+                    if let Some(t) = self.nearest_enemy_unit(ni, self.units[i].pos, sight) {
                         let th = self.uh(t);
                         self.units[i].order = Order::Attack(Target::Unit(th));
                     }
@@ -2573,10 +2579,12 @@ impl World {
                 if self.units[i].scan_t <= 0.0 {
                     self.units[i].scan_t = 0.4;
                     let p = self.units[i].pos;
-                    let found = self
-                        .nearest_enemy_unit(ni, p, kind.sight())
-                        .map(|t| Target::Unit(self.uh(t)))
-                        .or_else(|| self.nearest_enemy_bld(ni, p, kind.sight()).map(|b| Target::Bld(self.bh(b))));
+                    if mage && self.units[i].cooldown <= 0.0 && self.begin_meteor(i, None) {
+                        self.units[i].resume = Some(g);
+                        return;
+                    }
+                    let enemy = self.nearest_enemy_unit(ni, p, sight).map(|t| Target::Unit(self.uh(t)));
+                    let found = enemy.or_else(|| self.nearest_enemy_bld(ni, p, kind.sight()).map(|b| Target::Bld(self.bh(b))));
                     if let Some(t) = found {
                         self.units[i].order = Order::Attack(t);
                         self.units[i].resume = Some(g);
@@ -2615,6 +2623,15 @@ impl World {
                         return;
                     }
                 }
+                let in_range = match t {
+                    Target::Bld(bh) => d <= range || self.bld(bh).map_or(false, |b| b.dist_to_footprint(pos) <= def.range + 0.35),
+                    Target::Unit(_) => d <= range,
+                };
+                if mage && in_range
+                    && self.units[i].cooldown <= 0.0 && self.begin_meteor(i, Some(t))
+                {
+                    return;
+                }
                 // 攻撃中も近くに敵兵がいれば建物より優先
                 if let Target::Bld(_) = t {
                     if self.units[i].scan_t <= 0.0 {
@@ -2630,18 +2647,9 @@ impl World {
                         }
                     }
                 }
-                let in_range = match t {
-                    Target::Bld(bh) => d <= range || self.bld(bh).map_or(false, |b| b.dist_to_footprint(pos) <= def.range + 0.35),
-                    Target::Unit(_) => d <= range,
-                };
                 if in_range {
                     self.units[i].dir = (tp - pos).norm();
                     if self.units[i].cooldown <= 0.0 {
-                        if self.units[i].ut == UT_MAGE && self.player != ni
-                            && self.rng.f32() < 0.25 && self.begin_meteor(i, Some(t))
-                        {
-                            return;
-                        }
                         self.strike(i, t, tp);
                     }
                 } else {
@@ -3201,15 +3209,16 @@ mod tests {
         let nearby_hp = w.unit(nearby).unwrap().hp;
         w.rebuild_grid();
 
-        assert!(w.cast_nearest(JAPAN, mage, Spell::Fireball));
+        w.order_attack(&[mage], Target::Unit(near));
+        w.update_unit(mage.idx as usize, DT);
         let hit = w.unit(near).unwrap().hp;
         assert!(hit < hp);
         assert_eq!(w.unit(nearby).unwrap().hp, nearby_hp);
         assert!(matches!(w.shots.last().unwrap().effect, ShotEffect::Fireball));
         assert!(!matches!(w.unit(mage).unwrap().order, Order::Cast { .. }));
-        assert!(!w.cast_nearest(JAPAN, mage, Spell::Fireball));
+        w.update_unit(mage.idx as usize, DT);
+        assert_eq!(w.unit(near).unwrap().hp, hit);
 
-        w.order_attack(&[mage], Target::Unit(near));
         w.unit_mut(mage).unwrap().cooldown = 0.0;
         w.update_unit(mage.idx as usize, DT);
         assert!(w.unit(near).unwrap().hp < hit);
@@ -3227,6 +3236,46 @@ mod tests {
     }
 
     #[test]
+    fn player_mage_uses_both_spells_without_manual_casts() {
+        let mut w = World::new(12345);
+        w.player = JAPAN;
+        w.declare_war(JAPAN, SONG, true);
+        let mage = w.spawn_unit(JAPAN, UT_MAGE, v2(300.0, 300.0), 1.0);
+        let enemy = w.spawn_unit(SONG, UT_INF, v2(309.0, 300.0), 1.0);
+        let enemy_hp = w.unit(enemy).unwrap().hp;
+        w.rebuild_grid();
+
+        for _ in 0..30 {
+            w.update_unit(mage.idx as usize, DT);
+        }
+        assert!(w.unit(enemy).unwrap().hp < enemy_hp);
+        assert!(matches!(w.shots.last().unwrap().effect, ShotEffect::Fireball));
+
+        let barracks = w.spawn_building(SONG, BKind::Barracks, 301, 299, true);
+        let town = w.spawn_building(SONG, BKind::Town, 307, 299, true);
+        let town_pos = w.bld(town).unwrap().center();
+        let enemy_hp = w.unit(enemy).unwrap().hp;
+        for order in [
+            Order::Idle,
+            Order::AttackMove(v2(315.0, 300.0)),
+            Order::Attack(Target::Unit(enemy)),
+            Order::Attack(Target::Bld(barracks)),
+        ] {
+            let town_hp = w.bld(town).unwrap().hp;
+            let u = w.unit_mut(mage).unwrap();
+            u.order = order;
+            u.cooldown = 0.0;
+            u.scan_t = 0.0;
+            w.update_unit(mage.idx as usize, DT);
+            assert!(matches!(w.unit(mage).unwrap().order, Order::Cast { spell: Spell::Meteor, point, .. } if point == town_pos));
+            w.update_unit(mage.idx as usize, METEOR_CAST_TIME);
+            assert_eq!(w.unit(mage).unwrap().order, order);
+            assert!(w.bld(town).unwrap().hp < town_hp);
+            assert_eq!(w.unit(enemy).unwrap().hp, enemy_hp);
+        }
+    }
+
+    #[test]
     fn meteor_prioritizes_towns_and_only_damages_enemy_buildings() {
         let mut w = World::new(12345);
         w.player = JAPAN;
@@ -3236,20 +3285,23 @@ mod tests {
         let foe = w.spawn_unit(SONG, UT_INF, v2(308.0, 300.0), 1.0);
         let foe_hp = w.unit(foe).unwrap().hp;
         w.rebuild_grid();
-        assert!(!w.cast_nearest(JAPAN, mage, Spell::Meteor));
+        w.unit_mut(mage).unwrap().scan_t = 0.0;
+        w.update_unit(mage.idx as usize, DT);
+        assert!(!matches!(w.unit(mage).unwrap().order, Order::Cast { .. }));
 
         let barracks = w.spawn_building(SONG, BKind::Barracks, 301, 299, true);
         let town = w.spawn_building(SONG, BKind::Town, 307, 299, true);
         let farm = w.spawn_building(SONG, BKind::Farm, 307, 301, true);
         let friendly = w.spawn_building(JAPAN, BKind::Farm, 307, 297, true);
         let [barracks_hp, town_hp, farm_hp, friendly_hp] = [barracks, town, farm, friendly].map(|h| w.bld(h).unwrap().hp);
-        assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
+        w.update_unit(mage.idx as usize, DT);
         assert!(matches!(w.unit(mage).unwrap().order, Order::Cast { spell: Spell::Meteor, point, .. } if point == w.bld(town).unwrap().center()));
-        w.unit_mut(mage).unwrap().order = Order::Idle;
+        w.order_move(&[mage], v2(295.0, 300.0), false);
         w.update_unit(mage.idx as usize, DT);
         assert_eq!(w.bld(town).unwrap().hp, town_hp);
 
-        assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
+        w.unit_mut(mage).unwrap().order = Order::Attack(Target::Bld(barracks));
+        w.update_unit(mage.idx as usize, DT);
         for _ in 0..119 {
             w.update_unit(mage.idx as usize, DT);
         }
@@ -3265,7 +3317,7 @@ mod tests {
 
         for hit in 2..=10 {
             w.unit_mut(mage).unwrap().cooldown = 0.0;
-            assert!(w.cast_nearest(JAPAN, mage, Spell::Meteor));
+            w.update_unit(mage.idx as usize, DT);
             w.update_unit(mage.idx as usize, METEOR_CAST_TIME);
             let owner = if hit < 10 { SONG } else { JAPAN };
             assert_eq!(w.bld(town).unwrap().nation as usize, owner, "after hit {hit}");
