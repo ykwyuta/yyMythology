@@ -4,7 +4,7 @@
     {
       "output": "divine.bgra",
       "sprite_size": 96,
-      "sprite_count": 85,
+      "sprite_count": 87,
       "sheets": [
         {
           "name": "divine-01",
@@ -66,6 +66,12 @@
           "columns": 5,
           "rows": 3,
           "prompt": "Generate a transparent full-body RTS sprite sheet for historical-fantasy African armies. Exactly 5 equal columns by 3 equal rows, 15 isolated sprites on genuine alpha, ample transparent gutters, consistent painterly isometric three-quarter style, no cell borders, no words, no detached parts or oversized ground base. Columns in every row left to right are villager with basket or tool, infantry with spear and shield, archer carrying a bow, mounted scout on a compact horse, and a fully visible sailing ship on a tiny tightly cropped strip of wake. Row 1: ancient North Africa, Punic/Mediterranean and Nile textiles, linen and bronze, the ship a Punic galley with a tan square sail. Row 2: West Africa Sahel and Yoruba forest kingdom, indigo and ochre woven cloth with patterns specific to the region, practical iron weapons and leather shields, the ship a wooden West African long trading canoe with a simple sail. Row 3: East and southern Africa, subtle Aksumite and eastern African red-brown and ivory cloth, iron spear and leather, the ship a traditional Swahili dhow with an ivory lateen sail. Clear compact silhouettes readable at 35 pixels. Each subject centered, full height, leaves 12% margin on all sides."
+        },
+        {
+          "name": "wild-djinn",
+          "columns": 2,
+          "rows": 1,
+          "prompt": "Production transparent sprite atlas for YYMythology historical-fantasy RTS. Exact horizontal 2-column by 1-row layout with two entirely isolated full-body monsters. Left: gigantic Ice Djinn of Arctic Siberia, crystalline blue-white ice armor and frost crown, broad shoulders, humanoid biped of pale glacial rock, glowing cyan core. Right: gigantic Desert Djinn of the African drylands, muscular humanoid elemental of amber sandstone and flowing ribbons of sand, dark basalt armor seams, ochre and copper highlights. Both intimidating magical spirits, clear readable silhouette at 60 pixels, painterly isometric three-quarter front game miniature style, bright edge lighting, feet visible, no floor, no background, no shadow outside figure, no detached effects, no letters, 18 percent transparent padding around each sprite, transparent alpha between and around them."
         }
       ]
     },

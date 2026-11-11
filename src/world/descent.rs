@@ -3,14 +3,18 @@
 
 use super::*;
 
+#[cfg(test)]
 const QIN: usize = MONGOL;
 /// 天の軍が天下を統一するまでの年数
 pub const DESCENT_YEARS: f32 = 10.0;
 /// カラコルム（モンゴルが蘇る地）
+#[cfg(test)]
 pub const KARAKORUM: (f32, f32) = (102.8, 47.2);
 /// 天の兵の能力（誰も傷つけられない）
+#[cfg(test)]
 const DIVINE_POWER: f32 = 12.0;
 /// 同時にいる天の兵の上限
+#[cfg(test)]
 const DIVINE_MAX: usize = 90;
 
 pub struct Descent {
@@ -28,7 +32,10 @@ impl World {
     pub fn descent_left(&self) -> Option<f32> {
         self.descent.as_ref().map(|d| (d.start + DESCENT_YEARS - self.years).max(0.0))
     }
+}
 
+#[cfg(test)]
+impl World {
     /// 1294年：天がモンゴルに降臨する
     pub(super) fn begin_descent(&mut self) {
         let mut revived = false;
@@ -153,8 +160,8 @@ impl World {
                 self.order_move(&[h], g, true);
             }
         }
-        // 英霊モード：10年後の版図が天のモンゴルより広ければ勝利
-        if p >= 1.0 && self.game_over.is_none() && self.heroic {
+        // 10年後の版図が天のモンゴルより広ければ勝利
+        if p >= 1.0 && self.game_over.is_none() {
             self.recompute_territory();
             self.update_stats();
             let pl = self.player;
@@ -166,17 +173,6 @@ impl World {
                 t!("天の軍がユーラシアを統一した。モンゴルの覇業は天のものとなった……", "The army of Heaven has united Eurasia. The Mongol conquest now belongs to Tengri...", "天之军统一了欧亚。蒙古的霸业归于长生天……").to_string()
             } else {
                 tf!("{} の版図 {} は天のモンゴル {} に及ばなかった。天命はモンゴルに……", "{}'s territory of {} fell short of Heaven's Mongols at {}. The Mandate passes to the Mongols...", "{}的版图{}不及天之蒙古的{}。天命归蒙古……", tx(self.nations[pl].name), mine, god)
-            };
-            self.game_over = Some((false, text));
-            return;
-        }
-        // 天下統一：強制終了
-        if p >= 1.0 && self.game_over.is_none() {
-            let pl = self.player;
-            let text = if pl == QIN {
-                t!("天の軍がユーラシアを統一した。モンゴルの覇業は天のものとなった……", "The army of Heaven has united Eurasia. The Mongol conquest now belongs to Tengri...", "天之军统一了欧亚。蒙古的霸业归于长生天……").to_string()
-            } else {
-                tf!("天の軍がユーラシアを統一した。{} の覇業はここに終わる……", "The army of Heaven has united Eurasia. The ambitions of {} end here...", "天之军统一了欧亚。{}的霸业就此终结……", tx(self.nations[pl].name))
             };
             self.game_over = Some((false, text));
         }

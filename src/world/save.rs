@@ -9,7 +9,7 @@ use crate::ai::AiState;
 use crate::save::{RResult, Reader, Writer};
 
 /// 記録形式の版（中身の並びを変えたら上げる）
-pub const SAVE_VERSION: u32 = 2;
+pub const SAVE_VERSION: u32 = 3;
 
 fn bad(what: &str) -> String {
     tf!("記録が壊れている（{}）", "The save is damaged ({})", "存档已损坏（{}）", what)
@@ -246,6 +246,8 @@ fn r_order(r: &mut Reader, mines: usize) -> RResult<Order> {
 
 /// 史実イベントに現れる名前（君主家・人物）を 'static な文字列に戻す
 fn static_house(s: &str) -> RResult<&'static str> {
+    // Older saves store the previous display name in the house field.
+    let s = if s == "イラン" { "ペルシャ" } else { s };
     if let Some(h) = INITIAL_HOUSE.iter().find(|h| **h == s) {
         return Ok(h);
     }
@@ -441,7 +443,8 @@ impl World {
         w.bool(self.protect_player);
         w.u32(self.player_orders);
         w.bool(self.ai_player);
-        w.bool(self.heroic);
+        // Keep the old mode byte so earlier builds can read this layout.
+        w.bool(true);
         w.bool(self.game_over.is_some());
         if let Some((win, t)) = &self.game_over {
             w.bool(*win);
@@ -469,10 +472,9 @@ impl World {
         for b in self.banner_queue.iter() {
             w_banner(w, b);
         }
-        // 史書は年表の先頭から hist_i 件。滅んで起こらなかったかだけを書く
-        w.usize(self.hist_i);
-        for c in self.chronicle.iter() {
-            w.bool(c.skipped);
+        w.usize(self.history_skipped.len());
+        for &skipped in &self.history_skipped {
+            w.bool(skipped);
         }
         // ---- AI
         w.usize(self.ai.len());
@@ -789,7 +791,8 @@ impl World {
         w.protect_player = r.bool()?;
         w.player_orders = r.u32()?;
         w.ai_player = r.bool()?;
-        w.heroic = r.bool()?;
+        // Older saves may have disabled summoning. Both values now load with it enabled.
+        r.bool()?;
         w.game_over = if r.bool()? { Some((r.bool()?, r.str()?)) } else { None };
         w.descent = if r.bool()? { Some(Descent { start: r.f32()?, revived: r.bool()?, total: r.usize()?, taken: r.usize()? }) } else { None };
         // ---- 記録・史書
@@ -805,12 +808,8 @@ impl World {
         for _ in 0..nq {
             w.banner_queue.push_back(r_banner(r)?);
         }
-        w.hist_i = r.len(HISTORY.len())?;
-        w.chronicle.clear();
-        for e in HISTORY.iter().take(w.hist_i) {
-            let skipped = r.bool()?;
-            w.chronicle.push(Chron { ad: e.ad, nation: e.nation, kind: e.kind, title: e.title, text: e.text, skipped });
-        }
+        let historical_entries = r.len(HISTORY.len())?;
+        w.history_skipped = (0..historical_entries).map(|_| r.bool()).collect::<RResult<_>>()?;
         // ---- AI
         let na = r.len(1000)?;
         if na != w.ai.len() {
@@ -936,7 +935,7 @@ mod tests {
         b.save_to(&mut wr2);
         assert_eq!(bytes, wr2.buf, "読み戻した世界を書き直すと内容が変わる");
         assert_eq!(a.year_ad(), b.year_ad());
-        assert_eq!(a.chronicle.len(), b.chronicle.len());
+        assert_eq!(a.history_skipped, b.history_skipped);
         for i in 0..NATIONS.len() {
             assert_eq!(a.nations[i].alive, b.nations[i].alive);
             assert_eq!(a.nations[i].house, b.nations[i].house);

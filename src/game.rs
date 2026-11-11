@@ -1,7 +1,7 @@
 //! 画面・入力・HUD（独自実装の UI）
 
-mod chronicle;
 mod heroes;
+mod demons;
 mod mythology;
 mod market;
 mod mobile;
@@ -131,7 +131,6 @@ enum Act {
     Tax(u8),
     Buy(usize),
     Hire(usize),
-    ToggleHeroic,
     Summon,
     SummonHero(usize),
     SummonGod(u8),
@@ -237,8 +236,6 @@ pub struct Game {
     msg_cut: f32,
     /// 最後に記録した年（自動記録の間隔）
     autosave_years: f32,
-    /// タイトル画面で選ぶ英霊モード（既定は無効）
-    heroic_opt: bool,
     chron_scroll: usize,
     title_sel: Option<usize>,
     notice: Option<(String, f32)>,
@@ -378,7 +375,6 @@ impl Game {
             alerts_open: false,
             msg_cut: -1.0,
             autosave_years: 0.0,
-            heroic_opt: true,
             chron_scroll: 0,
             title_sel: None,
             notice: None,
@@ -836,17 +832,10 @@ impl Game {
                     if let Some(s) = std::env::var("YY_SEL").ok().and_then(|v| v.parse().ok()) {
                         self.title_sel = Some(s);
                     }
-                    if std::env::var("YY_HEROIC").is_ok() {
-                        self.heroic_opt = true;
-                    }
                 }
                 if let Some(n) = nation {
                     self.title_sel = Some(n);
                     self.do_act(Act::Start);
-                    // 撮影用：英霊モード（YY_HEROIC=1）
-                    if std::env::var("YY_HEROIC").is_ok() {
-                        self.world.heroic = true;
-                    }
                     // 撮影用：自国も AI に任せる（YY_AIPLAY=1）
                     self.world.ai_player = std::env::var("YY_AIPLAY").is_ok();
                     // 撮影用：指定の年（西暦）から始める（YY_YEAR=1230 など）
@@ -1920,7 +1909,6 @@ impl Game {
                 self.tip_until = 0.0;
                 if let Some(n) = self.title_sel {
                     self.world.player = n;
-                    self.world.heroic = self.heroic_opt;
                     self.screen = Screen::Playing;
                     self.zoom = 22.0;
                     self.cam = self.world.nations[n].home;
@@ -2263,18 +2251,13 @@ impl Game {
                     self.notice(t!("詠唱できる魔法使いと射程内の敵が必要", "Requires a ready mage and an enemy in range", "需要可施法的法师和射程内的敌人"));
                 }
             }
-            Act::ToggleHeroic => {
-                self.heroic_opt = !self.heroic_opt;
-            }
             Act::Summon => {
-                if self.world.heroic {
-                    self.show_summon = !self.show_summon;
-                    self.show_diplo = false;
-                    self.show_help = false;
-                    self.show_chron = false;
-                    self.show_market = false;
-                    self.show_save = false;
-                }
+                self.show_summon = !self.show_summon;
+                self.show_diplo = false;
+                self.show_help = false;
+                self.show_chron = false;
+                self.show_market = false;
+                self.show_save = false;
             }
             Act::SummonHero(k) => {
                 let own = self.own_sel();
@@ -2375,6 +2358,7 @@ impl Game {
             self.render_world_labels();
             if self.screen == Screen::Playing {
                 self.render_hero_labels();
+                self.render_demons();
                 self.render_build_queue();
             }
             // スマートフォン向け画面では、縦に収まらない一覧は指でなぞってスクロールする
@@ -2533,15 +2517,19 @@ impl Game {
         }
         // 矢
         for s in wd.shots.iter() {
-            if let Some(spell) = s.spell {
-                if fog_at(s.b) == 2 {
-                    let alpha = (s.t / 0.45).clamp(0.0, 1.0);
-                    let radius = spell.radius() * (1.0 - alpha * 0.65);
-                    let color = if spell == Spell::Meteor { [0.79, 0.29, 1.0, alpha] } else { [1.0, 0.48, 0.12, alpha] };
-                    g.ring(s.b.x, s.b.y, radius, (3.0 * px).max(0.10), 24, color);
-                    g.circle(s.b.x, s.b.y, radius * 0.4, 16, [1.0, 0.71, 0.34, alpha * 0.6]);
+            match s.effect {
+                ShotEffect::Spell(spell) => {
+                    if fog_at(s.b) == 2 {
+                        let alpha = (s.t / 0.45).clamp(0.0, 1.0);
+                        let radius = spell.radius() * (1.0 - alpha * 0.65);
+                        let color = if spell == Spell::Meteor { [0.79, 0.29, 1.0, alpha] } else { [1.0, 0.48, 0.12, alpha] };
+                        g.ring(s.b.x, s.b.y, radius, (3.0 * px).max(0.10), 24, color);
+                        g.circle(s.b.x, s.b.y, radius * 0.4, 16, [1.0, 0.71, 0.34, alpha * 0.6]);
+                    }
+                    continue;
                 }
-                continue;
+                ShotEffect::Demon(_) => continue,
+                ShotEffect::Arrow => {}
             }
             let t = 1.0 - s.t / 0.3;
             let p = s.a + (s.b - s.a) * t.clamp(0.0, 1.0);
@@ -2554,6 +2542,24 @@ impl Game {
         }
         if fog_on {
             g.draw_textured(&self.fog_tex, 0.0, 0.0, mw, mh, [1.0; 4], true);
+        }
+        if self.screen == Screen::Playing {
+            for demon in &wd.demons {
+                let p = demon.pos;
+                if p.x + DEMON_RANGE >= view0.x && p.x - DEMON_RANGE <= view1.x
+                    && p.y + DEMON_RANGE >= view0.y && p.y - DEMON_RANGE <= view1.y
+                {
+                    g.ring(p.x, p.y, DEMON_RANGE, (1.4 * px).max(0.05), 40, demon.kind.color(0.65));
+                }
+            }
+            for shot in &wd.shots {
+                if let ShotEffect::Demon(kind) = shot.effect {
+                    let fade = (shot.t / 0.45).clamp(0.0, 1.0);
+                    let radius = DEMON_RANGE * (1.0 - 0.7 * fade);
+                    g.ring(shot.a.x, shot.a.y, radius, (3.0 * px).max(0.15), 32, kind.color(fade));
+                    g.circle(shot.a.x, shot.a.y, radius, 32, kind.color(fade * 0.14));
+                }
+            }
         }
         // 移動目標の印
         if let Some((p, t, atk)) = self.marker {
@@ -3211,23 +3217,9 @@ impl Game {
             return;
         }
         let ty = (h - 128.0).max(592.0);
-        // 記録から続ける（空きがあれば独立した行、狭ければ英霊モードの行と並べる）
-        let cy = ty - 108.0;
-        let heroic_x0 = if self.title_sel.is_some() && cy < 590.0 {
-            let mid = px + 24.0 + (w - 48.0 - px) * 0.5;
-            self.add_button(mid + 4.0, ty - 54.0, w - 24.0, ty - 12.0, t!("続きから F5", "Continue F5", "继续 F5"), "", 0, true, Act::SaveMenu, t!("記録した対局を再開する", "Resume a saved game", "继续已保存的对局"));
-            Some(mid - 4.0)
-        } else {
-            self.add_button(px + 24.0, cy, w - 24.0, cy + 42.0, t!("続きから（記録を読み込む） F5", "Continue (load a save) F5", "继续（读取存档） F5"), "", 0, true, Act::SaveMenu, t!("記録した対局を再開する。書き出したファイルからも読み込める", "Resume a saved game. Exported files can be loaded too", "继续已保存的对局。也可读取导出的文件"));
-            None
-        };
-        let hl = if self.heroic_opt { t!("英霊モード：オン", "Heroic Spirits: On", "英灵模式：开") } else { t!("英霊モード：オフ", "Heroic Spirits: Off", "英灵模式：关") };
-        let hx1 = heroic_x0.unwrap_or(w - 24.0);
-        self.add_button(px + 24.0, ty - 54.0, hx1, ty - 12.0, hl, "", 0, true, Act::ToggleHeroic, t!("民を生贄に捧げて各国の英雄を呼べる（一国に一体）", "Sacrifice workers to summon heroic spirits (one per state)", "献祭民召唤英灵（每国一位）"));
-        if self.heroic_opt {
-            self.gfx.stroke_round(px + 24.0, ty - 54.0, hx1, ty - 12.0, 3.0, 2.0, [1.0, 0.85, 0.4, 1.0]);
-        }
-        self.add_button(px + 24.0, ty, w - 24.0, ty + 48.0, t!("はじめての方は：チュートリアル", "New here? Tutorial", "初次游玩：教程"), "", 0, true, Act::Tutorial, t!("モンゴルの君主として、操作と遊び方を1段ずつ学ぶ", "Learn the controls and the game step by step as ruler of the Mongols", "以蒙古君主身份逐步学习操作与玩法"));
+        let mid = (px + w) * 0.5;
+        self.add_button(px + 24.0, ty, mid - 4.0, ty + 48.0, t!("続きから F5", "Continue F5", "继续 F5"), "", 0, true, Act::SaveMenu, t!("記録した対局を再開する。書き出したファイルからも読み込める", "Resume a saved game. Exported files can be loaded too", "继续已保存的对局。也可读取导出的文件"));
+        self.add_button(mid + 4.0, ty, w - 24.0, ty + 48.0, t!("チュートリアル", "Tutorial", "教程"), "", 0, true, Act::Tutorial, t!("モンゴルの君主として、操作と遊び方を1段ずつ学ぶ", "Learn the controls and the game step by step as ruler of the Mongols", "以蒙古君主身份逐步学习操作与玩法"));
         let ty = ty + 60.0;
         self.add_button(px + 24.0, ty, px + 70.0, ty + 40.0, "A−", "", 0, true, Act::Scale(-1), t!("文字と画面部品を小さくする（Ctrl＋−）", "Make text and interface smaller (Ctrl+−)", "缩小文字与界面（Ctrl＋−）"));
         self.add_button(px + 74.0, ty, px + 120.0, ty + 40.0, "A＋", "", 0, true, Act::Scale(1), t!("文字と画面部品を大きくする（Ctrl＋＋）", "Make text and interface larger (Ctrl++)", "放大文字与界面（Ctrl＋＋）"));
@@ -3243,8 +3235,7 @@ impl Game {
             // 説明の行数に合わせて上へ伸ばす
             let x0 = px + 24.0;
             let th = self.gfx.measure_h(&t, Font::Small, w - x0 - 40.0) + 10.0;
-            // 英霊モードの切り替えボタンの上に出す
-            let y1 = ty - 124.0;
+            let y1 = ty - 66.0;
             self.art.draw_inset_box(&self.gfx, x0, y1 - th - 4.0, w - 24.0, y1);
             self.gfx.text(&t, x0 + 8.0, y1 - th, w - x0 - 40.0, th, Font::Small, [0.95, 0.92, 0.85, 1.0]);
         }
@@ -3559,6 +3550,11 @@ impl Game {
             let s = if mine { 1.6 } else { 1.0 };
             self.gfx.fill_rect(x - s, y - s, x + s, y + s, if mine { [1.0, 1.0, 1.0, 1.0] } else { c4(darker(c, 0.6), 1.0) });
         }
+        for demon in &self.world.demons {
+            let x = mx0 + demon.pos.x * sxs;
+            let y = my0 + demon.pos.y * sys;
+            self.gfx.stroke_circle(x, y, 2.5, 1.25, demon.kind.color(0.95));
+        }
         let a = self.screen_to_world(0.0, self.top_h());
         let b = self.screen_to_world(w, h - BOT_H);
         self.gfx.stroke_rect(
@@ -3578,8 +3574,8 @@ impl Game {
         self.art.draw_inset_box(&self.gfx, ix, py + 6.0, ix + iw, h - 4.0);
         self.art.draw_corner_ornaments(&self.gfx, ix + 2.0, py + 8.0, ix + iw - 2.0, h - 6.0, 11.0);
         self.render_info(ix + 12.0, py + 12.0, iw - 24.0);
-        // 英霊モード：民を選んでいれば英霊召喚ボタン
-        if self.world.heroic && self.own_sel().iter().any(|&h| self.world.unit(h).map_or(false, |u| u.kind == UnitKind::Worker)) {
+        // 民を選んでいれば英霊召喚ボタン
+        if self.own_sel().iter().any(|&h| self.world.unit(h).map_or(false, |u| u.kind == UnitKind::Worker)) {
             let tip = if self.world.hero_of(pl).is_some() { t!("英霊は一国に一体だけ。いまの英霊が倒れれば、また呼べる", "Only one spirit per state. If yours falls, you can summon again", "每国只能有一位英灵。现有英灵倒下后可再次召唤") } else { t!("選んだ民を生贄に捧げ、英霊を呼ぶ（英霊の能力＝生贄の能力の合計×1.1〜3.0）", "Sacrifice the selected workers to summon a heroic spirit (spirit power = total sacrificed power × 1.1–3.0)", "献祭所选的民，召唤英灵（英灵能力＝祭品能力总和×1.1〜3.0）") };
             self.add_button(ix + iw - 176.0, h - 58.0, ix + iw - 14.0, h - 14.0, t!("英霊召喚", "Summon Spirit", "召唤英灵"), t!("民を生贄に", "sacrifice workers", "献祭民"), 'H' as u32, self.world.hero_of(pl).is_none(), Act::Summon, tip);
         }
@@ -4312,9 +4308,9 @@ impl Game {
         self.add_button(x0 + pw - 90.0, y0 + 10.0, x0 + pw - 14.0, y0 + 40.0, t!("閉じる", "Close", "关闭"), "", 0, true, Act::CloseOverlay, "");
         self.art.draw_inset_box(&self.gfx, x0 + 14.0, y0 + 46.0, x0 + pw - 14.0, y0 + ph - 14.0);
         let text = t!(
-            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊は自国領内の民を選んで H を押し、民を生贄にして召喚する。\n\n■ 魔法使い\n兵営で訓練する。選択後、ファイヤーボール（Z、1.5秒）またはメテオ（X、4秒）で射程内の敵の位置を狙う。魔法が着弾する前に敵は移動できる。移動や停止で詠唱を中断する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
-            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a heroic spirit, select workers in your territory and press H to sacrifice them.\n\n■ Mages\nTrain mages at a barracks. Select them to cast Fireball (Z, 1.5s) or Meteor (X, 4s) at nearby enemy positions. Enemies may move before impact. Move or stop to interrupt casting.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
-            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民并按 H 献祭，可召唤英灵。\n\n■ 法师\n在兵营训练。选中后可对附近敌人所在位置施放火球术（Z，1.5秒）或陨石术（X，4秒）。敌人可在着弹前移动。移动或停止可中断施法。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
+            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。選択後、ファイヤーボール（Z、1.5秒）またはメテオ（X、4秒）で射程内の敵の位置を狙う。魔法が着弾する前に敵は移動できる。移動や停止で詠唱を中断する。\n\n■ 魔神の危険域\n氷や砂漠の魔神は、範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
+            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Select them to cast Fireball (Z, 1.5s) or Meteor (X, 4s) at nearby enemy positions. Enemies may move before impact. Move or stop to interrupt casting.\n\n■ Djinn hazards\nIce and Desert Djinn attack every unit in their range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
+            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。选中后可对附近敌人所在位置施放火球术（Z，1.5秒）或陨石术（X，4秒）。敌人可在着弹前移动。移动或停止可中断施法。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神攻击范围内所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
         );
         // 入りきらなければ小さい字にする
         let f = if self.gfx.measure_h(text, Font::Normal, pw - 48.0) > ph - 64.0 { Font::Small } else { Font::Normal };

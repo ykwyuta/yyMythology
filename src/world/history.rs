@@ -1,118 +1,73 @@
-//! 史実イベント：英雄・名将・政治指導者の登場、反乱・簒奪による君主家の交代、
-//! 草原の統一（服属）、宋の弱体化とモンゴルの強大化
-//!
-//! 年表は西暦の年で並べ、その年が来たら発生する。対象国が滅亡（または未成立）していれば省略する。
+//! 旧版の記録を読み込むための年表と、対局中の告知。
 
 use super::*;
+
+#[cfg(test)]
+const JERUSALEM: usize = 22;
+#[cfg(test)]
+const RUM: usize = 23;
+#[cfg(test)]
+const KIPCHAK: usize = 26;
 
 /// 各国の始まりの君主家。NATIONS と同じ並び
 pub const INITIAL_HOUSE: &[&str] = &[
     "ボルジギン氏", "趙氏", "完顔氏", "耶律氏", "嵬名氏", "王氏", "皇室（院政）", "段氏", "李朝", "諸侯分立", "イナンチ・カン家", "クルジャクス家",
     "タタル六部", "トクトア家", "イディクート家", "耶律氏", "骨嵬の長", "アヌシュテギン家", "セルジューク家", "アッバース家", "シャンサブ家",
-    "ファーティマ家", "ブーローニュ家", "ルーム・セルジューク家", "コムネノス家", "バグラティオニ家", "諸ハン", "アルムシュ家",
+    "ファーティマ家", "クルド", "タイ", "コムネノス家", "バグラティオニ家", "コサック", "アルムシュ家",
     "リューリク家（モノマフ系）", "リューリク家（ユーリー系）", "民会（ヴェーチェ）", "ピャスト家", "アールパード家", "趙氏",
-    "ブリテン", "ガリア", "イベリア", "ローマ", "北欧", "ゲルマニア", "バルト", "インド", "タミル", "スワンナプーム", "ジャワ", "アラビア", "シベリア", "カムチャツカ", "ギリシャ", "イラン",
-    "評議会", "メロエ王家", "ケイタ家", "イフェ王家", "アクスム王家", "キルワのスルタン家", "石の都の王家",
+    "ブリテン", "ガリア", "イベリア", "ローマ", "北欧", "ゲルマニア", "バルト", "インド", "タミル", "クメール", "ジャワ", "アラビア", "シベリア", "カムチャツカ", "ギリシャ", "ペルシャ",
+    "評議会", "メロエ王家", "ケイタ家", "イフェ王家", "アクスム王家", "キルワのスルタン家", "石の都の王家", "ビルマ", "マレー",
 ];
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum HKind {
-    /// 英雄・名将・名君
-    Hero,
-    /// 学者・宗教者
-    Sage,
-    /// 政治指導者（宰相・改革者）
-    Minister,
-    /// 反乱・内乱
-    Revolt,
-    /// 簒奪・乗っ取り（君主家の交代）
-    Usurp,
-    /// 旧君主家の復辟
-    Restore,
-    /// 大敗・災厄
-    Disaster,
-}
-
-impl HKind {
-    pub fn label(self) -> &'static str {
-        match self {
-            HKind::Hero => t!("英雄", "Hero", "英雄"),
-            HKind::Sage => t!("賢者", "Sage", "贤者"),
-            HKind::Minister => t!("政治指導者", "Statesman", "政治家"),
-            HKind::Revolt => t!("反乱", "Revolt", "叛乱"),
-            HKind::Usurp => t!("簒奪", "Usurpation", "篡位"),
-            HKind::Restore => t!("復辟", "Restoration", "复辟"),
-            HKind::Disaster => t!("大敗", "Disaster", "大败"),
-        }
-    }
-    /// 国にとって不利な出来事か
-    pub fn bad(self) -> bool {
-        matches!(self, HKind::Revolt | HKind::Usurp | HKind::Disaster)
-    }
-    pub fn color(self) -> [f32; 3] {
-        if self.bad() {
-            [1.0, 0.55, 0.45]
-        } else {
-            [0.75, 0.9, 1.0]
-        }
-    }
-}
-
-/// イベントの効果（対象は原則としてイベントの国）
-#[derive(Clone, Copy, Debug)]
+/// Names used by the old save format. Other event effects are archive data.
 pub enum Fx {
-    /// 人物が仕える：生産（税・採集）と兵の攻撃力を一定年数だけ高める（負なら混乱）
-    Figure(&'static str, f32, f32, f32),
-    /// 人物が去る
-    Dismiss(&'static str),
-    /// 資源を得る
-    Grant(f32, f32, f32),
-    /// 全兵の能力を上げる（時代上限まで）
-    Train(f32),
-    /// 都に戈兵を召集
-    Levy(u32),
-    /// 兵の一部が離反・戦死する
-    Purge(f32),
-    /// 蓄えの一部を失う
-    Plunder(f32),
-    /// 君主家（国姓）が変わる
+    Figure(&'static str),
     House(&'static str),
-    /// 指定国を標的とした反〇〇同盟（隣国が結ぶ）
-    Hezong(usize),
-    /// 自国を標的とする連合を解散させる（連衡）
-    Breakup,
-    /// a と b が休戦する
-    Truce(usize, usize, f32),
-    /// a が b に宣戦する
-    War(usize, usize),
-    /// 生産能力バイアスを掛ける（国の盛衰）
-    Bias(f32),
-    /// 指定国を服属させる（城邑と兵を併せる）
-    Annex(usize),
-    /// 指定国が成立する
-    Found(usize),
-    /// 靖康の変（宋が南宋に）
-    Jingkang,
-    /// 神風（日本の近海の敵船が沈む）
-    Kamikaze,
+    #[cfg(test)]
+    Dismiss(&'static str),
+    Other,
 }
 
 pub struct HEvent {
+    #[cfg(test)]
     pub ad: i32,
+    #[cfg(test)]
     pub nation: usize,
-    pub kind: HKind,
+    #[cfg(test)]
     pub title: &'static str,
+    #[cfg(test)]
     pub text: &'static str,
     pub fx: &'static [Fx],
 }
 
-macro_rules! ev {
-    ($bc:expr, $n:expr, $k:ident, $t:expr, $x:expr, [$($fx:expr),* $(,)?]) => {
-        HEvent { ad: $bc, nation: $n, kind: HKind::$k, title: $t, text: $x, fx: &[$($fx),*] }
-    };
+macro_rules! legacy_fx {
+    (Figure($name:literal, $($args:tt)*)) => { Fx::Figure($name) };
+    (House($name:literal)) => { Fx::House($name) };
+    (Dismiss($name:literal)) => {{
+        #[cfg(test)]
+        { Fx::Dismiss($name) }
+        #[cfg(not(test))]
+        { Fx::Other }
+    }};
+    ($other:ident $($args:tt)*) => { Fx::Other };
 }
 
-use Fx::*;
+macro_rules! ev {
+    ($ad:expr, $nation:expr, $kind:ident, $title:expr, $text:expr,
+        [$($effect:ident $(($($args:tt)*))?),* $(,)?]) => {
+        HEvent {
+            #[cfg(test)]
+            ad: $ad,
+            #[cfg(test)]
+            nation: $nation,
+            #[cfg(test)]
+            title: $title,
+            #[cfg(test)]
+            text: $text,
+            fx: &[$(legacy_fx!($effect $(($($args)*))?)),*],
+        }
+    };
+}
 
 /// 史実年表（西暦の昇順）。tools/gendata.py が生成する
 pub const HISTORY: &[HEvent] = &[
@@ -245,245 +200,7 @@ pub struct Person {
     pub until: f32,
 }
 
-/// 史書の記録
-pub struct Chron {
-    pub ad: i32,
-    pub nation: usize,
-    pub kind: HKind,
-    pub title: &'static str,
-    pub text: &'static str,
-    /// 対象国が滅んでいて起こらなかった
-    pub skipped: bool,
-}
-
 impl World {
-    /// 年が改まるごとに史実イベントを発生させる
-    pub(super) fn run_history(&mut self) {
-        let ad = self.year_ad();
-        // 人物の退場
-        let years = self.years;
-        for n in self.nations.iter_mut() {
-            n.figures.retain(|f| f.until > years);
-        }
-        while self.hist_i < HISTORY.len() && HISTORY[self.hist_i].ad <= ad {
-            let e = &HISTORY[self.hist_i];
-            self.hist_i += 1;
-            self.fire_event(e);
-        }
-        self.refresh_mods();
-    }
-
-    fn fire_event(&mut self, e: &'static HEvent) {
-        let n = e.nation;
-        // 新しい国の成立は、その国がまだ無くても起こる
-        let founding = e.fx.iter().any(|f| matches!(*f, Fx::Found(x) if x == n));
-        let skipped = !self.nations[n].alive && !founding;
-        self.chronicle.push(Chron { ad: e.ad, nation: n, kind: e.kind, title: e.title, text: e.text, skipped });
-        if skipped {
-            return;
-        }
-        // チュートリアル中はプレイヤーに不利な出来事を起こさない
-        let shield = self.protect_player && n == self.player;
-        let mut notes: Vec<String> = Vec::new();
-        for fx in e.fx.iter() {
-            match *fx {
-                Figure(name, eco, mil, yrs) => {
-                    if shield && (eco < 0.0 || mil < 0.0) {
-                        continue;
-                    }
-                    let until = self.years + yrs;
-                    let nat = &mut self.nations[n];
-                    nat.figures.retain(|f| f.name != name);
-                    nat.figures.push(Person { name, eco, mil, until });
-                    let mut s = String::from(tx(name));
-                    if eco != 0.0 {
-                        s.push_str(&tf!(" 生産{:+.0}%", " production {:+.0}%", " 生产{:+.0}%", eco * 100.0));
-                    }
-                    if mil != 0.0 {
-                        s.push_str(&tf!(" 武{:+.0}%", " military {:+.0}%", " 武{:+.0}%", mil * 100.0));
-                    }
-                    s.push_str(&tf!("（{}年）", " ({} years)", "（{}年）", yrs.min(END_AD - START_AD) as i32));
-                    notes.push(s);
-                }
-                Dismiss(name) => {
-                    let nat = &mut self.nations[n];
-                    if nat.figures.iter().any(|f| f.name == name) {
-                        nat.figures.retain(|f| f.name != name);
-                        notes.push(tf!("{} が去る", "{} departs", "{}离去", tx(name)));
-                    }
-                }
-                Grant(a, b, c) => {
-                    let r = &mut self.nations[n].res;
-                    r[0] += a;
-                    r[1] += b;
-                    r[2] += c;
-                    notes.push(tf!("糧{:.0} 木{:.0} 鉄{:.0}", "food {:.0}, wood {:.0}, iron {:.0}", "粮{:.0} 木{:.0} 铁{:.0}", a, b, c));
-                }
-                Train(x) => {
-                    let cap = self.power_cap();
-                    let mut k = 0;
-                    for u in self.units.iter_mut() {
-                        if u.alive && u.nation as usize == n && u.kind.military() && u.power < cap {
-                            let ratio = u.hp / u.max_hp();
-                            u.power = (u.power + x).min(cap);
-                            u.hp = ratio * u.max_hp();
-                            k += 1;
-                        }
-                    }
-                    if k > 0 {
-                        notes.push(tf!("兵{}人の能力{:+.1}", "{} soldiers' power {:+.1}", "{}名士兵能力{:+.1}", k, x));
-                    }
-                }
-                Levy(cnt) => {
-                    let Some(c) = self.nations[n].capital else { continue };
-                    let pw = (1.0 + self.years / (END_AD - START_AD) * 2.0).min(self.power_cap());
-                    let ut = best_land_ut(n);
-                    let mut k = 0;
-                    for _ in 0..cnt {
-                        if let Some(sp) = self.spawn_point(c) {
-                            self.spawn_unit(n, ut, sp, pw);
-                            k += 1;
-                        }
-                    }
-                    if k > 0 {
-                        notes.push(tf!("{}{}人が馳せ参じる", "{1} {0} rally to the capital", "{}{}名赶来效命", tx(udef(ut).name), k));
-                    }
-                }
-                Bias(f) => {
-                    if shield && f < 1.0 {
-                        continue;
-                    }
-                    let nat = &mut self.nations[n];
-                    let old = nat.bias;
-                    nat.bias = (nat.bias * f).clamp(0.4, 2.4);
-                    notes.push(tf!("国力 ×{:.2} → ×{:.2}", "national strength ×{:.2} → ×{:.2}", "国力 ×{:.2} → ×{:.2}", old, nat.bias));
-                }
-                Annex(t) => {
-                    if let Some(s) = self.annex(n, t) {
-                        notes.push(s);
-                    }
-                }
-                Found(t) => {
-                    if let Some(s) = self.found_nation(t) {
-                        notes.push(s);
-                    }
-                }
-                Jingkang => {
-                    if let Some(s) = self.jingkang() {
-                        notes.push(s);
-                    }
-                }
-                Kamikaze => {
-                    if let Some(s) = self.kamikaze() {
-                        notes.push(s);
-                    }
-                }
-                Purge(f) => {
-                    if shield {
-                        continue;
-                    }
-                    let mut idx: Vec<usize> = (0..self.units.len()).filter(|&i| self.units[i].alive && self.units[i].nation as usize == n && self.units[i].kind.military()).collect();
-                    // 都から遠い兵ほど離反しやすい
-                    let home = self.nations[n].home;
-                    idx.sort_by(|&a, &b| self.units[b].pos.dist(home).partial_cmp(&self.units[a].pos.dist(home)).unwrap());
-                    let k = (idx.len() as f32 * f).round() as usize;
-                    for &i in idx.iter().take(k) {
-                        self.kill_unit(i);
-                    }
-                    if k > 0 {
-                        notes.push(tf!("兵{}人を失う", "{} soldiers lost", "损失{}名士兵", k));
-                    }
-                }
-                Plunder(f) => {
-                    if shield {
-                        continue;
-                    }
-                    for r in self.nations[n].res.iter_mut() {
-                        *r *= 1.0 - f;
-                    }
-                    notes.push(tf!("蓄えの{:.0}%を失う", "{:.0}% of stores lost", "损失{:.0}%的储备", f * 100.0));
-                }
-                House(h) => {
-                    if self.nations[n].house != h {
-                        notes.push(tf!("君主家：{} → {}", "ruling house: {} → {}", "君主家：{} → {}", tx(self.nations[n].house), tx(h)));
-                        self.nations[n].house = h;
-                    }
-                }
-                Hezong(t) => {
-                    if self.nations[t].alive && !self.coalitions.iter().any(|c| c.target == t) && self.start_coalition_ex(CoalKind::Hezong, t, false) {
-                        let c = self.coalitions.last().unwrap();
-                        notes.push(tf!("隣国{}か国が反{}同盟を結ぶ", "{} neighbours form the Anti-{} League", "{}个邻国结成反{}同盟", c.members.len(), tx(self.nations[t].name)));
-                    }
-                }
-                Breakup => {
-                    let years = self.years;
-                    let mut any = false;
-                    for c in self.coalitions.iter_mut() {
-                        if c.target == n && c.end > years {
-                            c.end = years;
-                            any = true;
-                        }
-                    }
-                    if any {
-                        notes.push(tf!("{}を討つ連合が瓦解", "the coalition against {} collapses", "讨伐{}的联军瓦解", tx(self.nations[n].name)));
-                    }
-                }
-                Truce(a, b, yrs) => {
-                    if !self.nations[a].alive || !self.nations[b].alive || a == b {
-                        continue;
-                    }
-                    if self.coalition_locked(a, b) {
-                        continue;
-                    }
-                    // 交戦中のプレイヤーには休戦を受けるか選ばせる
-                    if self.war[a][b] && !self.propose_peace(a, b, yrs, tx(e.title)) {
-                        notes.push(tf!("{}と{}に{}年の休戦の勧め", "{} and {} are urged to a {}-year truce", "劝{}与{}休战{}年", tx(self.nations[a].name), tx(self.nations[b].name), yrs as i32));
-                        continue;
-                    }
-                    let t = self.years + yrs;
-                    self.truce[a][b] = self.truce[a][b].max(t);
-                    self.truce[b][a] = self.truce[b][a].max(t);
-                    notes.push(tf!("{}と{}が{}年の休戦", "{} and {} agree a {}-year truce", "{}与{}休战{}年", tx(self.nations[a].name), tx(self.nations[b].name), yrs as i32));
-                }
-                War(a, b) => {
-                    // プレイヤーの国に勝手に宣戦させない
-                    if a == self.player || (self.protect_player && b == self.player) {
-                        continue;
-                    }
-                    if self.declare_war(a, b, true) {
-                        notes.push(tf!("{}が{}に攻め込む", "{} invades {}", "{}进攻{}", tx(self.nations[a].name), tx(self.nations[b].name)));
-                    }
-                }
-            }
-        }
-        self.refresh_mods();
-        self.territory_dirty = true;
-        let name = tx(self.nations[n].name);
-        let head = tf!("【{}・{}】{}", "[{} · {}] {}", "【{}・{}】{}", name, e.kind.label(), tx(e.title));
-        // 本文はバナーと歴史に任せ、記録欄は見出しと効果だけにする
-        let mut msg = head;
-        if !notes.is_empty() {
-            msg.push_str(&tf!("（{}）", " ({})", "（{}）", notes.join(t!("、", "; ", "；"))));
-        }
-        self.push_msg(msg, e.kind.color());
-        // 大きな出来事はバナーで知らせる（小国の出来事は記録のみ）
-        let involves_player = n == self.player
-            || e.fx.iter().any(|f| match *f {
-                Hezong(t) | Annex(t) => t == self.player,
-                War(a, b) | Truce(a, b, _) => a == self.player || b == self.player,
-                _ => false,
-            });
-        let annexes_player = e.fx.iter().any(|f| matches!(*f, Annex(t) if t == self.player));
-        if involves_player || annexes_player || NATIONS[n].major || n == MONGOL {
-            let mut text = tx(e.text).to_string();
-            if !notes.is_empty() {
-                text.push_str(&format!("\n{}", notes.join(t!("　", "; ", "；"))));
-            }
-            let title = format!("{}　{}", name, tx(e.title));
-            self.queue_banner(Banner { title, text, t: 7.0 });
-        }
-    }
-
     /// 在世の人物の効果を集計する
     pub(super) fn refresh_mods(&mut self) {
         let years = self.years;
@@ -495,22 +212,6 @@ impl World {
             }
             n.eco_mul = e.clamp(0.4, 3.0);
             n.mil_mul = m.clamp(0.5, 2.5);
-        }
-    }
-
-    /// 時を進めて、その年までの史実の出来事を起こす（ユニットは動かさない。テスト・撮影用）
-    pub fn hist_skip_to(&mut self, years: f32) {
-        while self.years < years {
-            self.years = (self.years + 1.0).min(years);
-            if self.era == Era::Rise && START_AD + self.years >= EMPIRE_AD {
-                self.begin_empire();
-            }
-            self.run_history();
-            self.refresh_traits();
-            if self.territory_dirty {
-                self.recompute_territory();
-            }
-            self.update_stats();
         }
     }
 

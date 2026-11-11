@@ -75,7 +75,7 @@ impl World {
         let (pos, nation, power) = (u.pos, u.nation as usize, u.power);
         u.cooldown = cooldown;
         u.order = follow.map_or(Order::Idle, Order::Attack);
-        self.shots.push(Shot { a: pos, b: point, t: 0.45, spell: Some(spell) });
+        self.shots.push(Shot { a: pos, b: point, t: 0.45, effect: ShotEffect::Spell(spell) });
         let caster = self.uh(i);
         let radius = spell.radius();
         for ti in 0..self.units.len() {

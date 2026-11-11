@@ -31,7 +31,9 @@ impl TraitMods {
 
 pub struct Trait {
     pub nation: usize,
+    #[cfg(test)]
     pub name: &'static str,
+    #[cfg(test)]
     pub desc: &'static str,
     /// この年（西暦）から有効
     pub from_ad: i32,
@@ -47,7 +49,7 @@ const CAVK: usize = 3;
 
 macro_rules! tr {
     ($n:expr, $name:expr, $desc:expr, $span:expr, $f:expr) => {
-        Trait { nation: $n, name: $name, desc: $desc, from_ad: $span.0, to_ad: $span.1, fx: $f }
+        Trait { nation: $n, #[cfg(test)] name: $name, #[cfg(test)] desc: $desc, from_ad: $span.0, to_ad: $span.1, fx: $f }
     };
 }
 
@@ -120,7 +122,6 @@ pub const TRAITS: &[Trait] = &[
     tr!(KERAIT, "騎馬の民", "トーラ川の遊牧民。騎兵の攻撃+20%、騎兵の訓練費-20%", ALL, horse),
     tr!(TATAR, "騎馬の民", "フルン湖の遊牧民。騎兵の攻撃+20%、騎兵の訓練費-20%", ALL, horse),
     tr!(MERKIT, "騎馬の民", "セレンゲ川の遊牧民。騎兵の攻撃+20%、騎兵の訓練費-20%", ALL, horse),
-    tr!(KIPCHAK, "騎馬の民", "黒海北岸の遊牧民。騎兵の攻撃+20%、騎兵の訓練費-20%", ALL, horse),
     tr!(UYGHUR, "オアシスの商人", "天山の南北を結ぶ商業の民。商人が集まる（×1.6）、市場の値-20%", ALL, |m| {
         m.attract *= 1.6;
         m.market *= 0.8;
@@ -141,11 +142,6 @@ pub const TRAITS: &[Trait] = &[
     }),
     tr!(EGYPT, "ナイルの恵み", "毎年の氾濫が畑を潤す。生産+20%", ALL, |m| m.eco *= 1.2),
     tr!(EGYPT, "マムルーク朝", "1250年、奴隷軍人が王朝を開いた。騎兵の攻撃+20%", (1250, 1294), |m| m.atk[CAVK] *= 1.2),
-    tr!(JERUSALEM, "十字軍の城", "クラック・デ・シュヴァリエのような堅城。城邑・建物の受ける損害-30%、騎兵の攻撃+10%", ALL, |m| {
-        m.def *= 0.7;
-        m.atk[CAVK] *= 1.1;
-    }),
-    tr!(RUM, "隊商宿", "街道に隊商宿（キャラバンサライ）を並べた。商人が集まる（×1.4）", ALL, |m| m.attract *= 1.4),
     tr!(BYZANTIUM, "テオドシウスの城壁", "千年の都を守る三重の城壁。城邑・建物の受ける損害-35%", ALL, |m| m.def *= 0.65),
     tr!(BYZANTIUM, "ノミスマ金貨", "地中海の基軸通貨。市場の値-25%", ALL, |m| m.market *= 0.75),
     tr!(GEORGIA, "山の王国", "カフカスに守られた王国。城邑・建物の受ける損害-20%、騎兵の攻撃+10%", ALL, |m| {
@@ -170,11 +166,6 @@ pub const TRAITS: &[Trait] = &[
 /// その年に有効な特徴
 pub fn traits_of(n: usize, ad: i32) -> impl Iterator<Item = &'static Trait> {
     TRAITS.iter().filter(move |t| t.nation == n && ad >= t.from_ad && ad <= t.to_ad)
-}
-
-/// 年代を問わずその国の特徴すべて
-pub fn all_traits_of(n: usize) -> impl Iterator<Item = &'static Trait> {
-    TRAITS.iter().filter(move |t| t.nation == n)
 }
 
 impl World {

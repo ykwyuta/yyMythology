@@ -943,7 +943,7 @@ async function main() {
   ]);
   const [exports, atlases] = await Promise.all([
     loadWasm(),
-    Promise.all(['divine-v2.bgra', 'buildings-v2.bgra'].map(loadMythologyAtlas)),
+    Promise.all(['divine-v3.bgra', 'buildings-v2.bgra'].map(loadMythologyAtlas)),
     fontWait,
     loadSlotInfo(),
   ]);

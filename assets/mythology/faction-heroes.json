@@ -1,0 +1,18 @@
+{
+  "generator": "Built-in ImageGen",
+  "cell_size": 96,
+  "atlases": [
+    {
+      "file": "faction-heroes.png",
+      "columns": 2,
+      "rows": 2,
+      "heroes": [
+        "ペトロ・サハイダーチヌイ",
+        "ラームカムヘーン",
+        "アノーヤター",
+        "ハン・トゥア"
+      ],
+      "prompt": "One game sprite atlas for a historical fantasy RTS, exactly 2 columns by 2 rows in a square image, equal cells. Real transparent alpha zero around and between all figures, no mist, background, halo, floor, shadow, text or borders. Each is an isolated full-body painterly semi-realistic miniature, three-quarter facing right, complete feet, garments and weapons visible, generous padding within its cell. Top left: Petro Konashevych-Sahaidachny, early seventeenth-century Zaporozhian Cossack hetman, russet coat and dark blue sash, on a complete dark horse with saber. Top right: Ram Khamhaeng, medieval Sukhothai Thai ruler, gold and deep teal textiles, on foot with sword. Bottom left: Anawrahta, eleventh-century Bagan Burmese king, indigo-red robes and restrained gilt regalia, on foot with spear. Bottom right: Hang Tuah, legendary fifteenth-century Malay warrior of Melaka, folded dark tengkolok and turquoise patterned sampin, on foot with kris. Distinct silhouettes and color palettes. Ensure clean, fully transparent spaces around every silhouette for compositing on a dark game map."
+    }
+  ]
+}

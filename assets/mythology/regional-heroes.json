@@ -1,0 +1,68 @@
+{
+  "generator": "Built-in ImageGen",
+  "cell_size": 96,
+  "atlases": [
+    {
+      "file": "regional-heroes-01.png",
+      "columns": 4,
+      "rows": 2,
+      "heroes": [
+        "段思平",
+        "トルグン",
+        "トクトア・ベキ",
+        "バルチュク・アルト・テギン",
+        "シャクシャイン",
+        "アルムシュ",
+        "ヴェルキンゲトリクス",
+        "ビリアトゥス"
+      ],
+      "prompt": "One production-ready game sprite atlas for a historical fantasy RTS. Exactly 4 columns by 2 rows in a wide 2:1 image, all cells equal size. Real transparent alpha background. Exactly one isolated character per cell. Row-major order (top left to right, then bottom left to right): 1. Duan Siping, 10th-century Bai ruler of Dali, dark lamellar over indigo, straight sword on foot; 2. Torgun, fictional medieval Tatar steppe scout, rust-brown deel, mounted with recurve bow; 3. Toqto'a Beki, medieval Merkit leader, brown fur-lined coat, mounted with bow; 4. Barchuq Art Tegin, medieval Uyghur ruler of Qocho, teal silk robe over armor, mounted with sword; 5. Shakushain, seventeenth-century Ainu leader, indigo embroidered robe with geometric trim, carrying bow on foot; 6. Almish, tenth-century Volga Bulgar ruler, dark green caftan over lamellar, mounted with lance; 7. Vercingetorix, ancient Gaulish leader, bronze torc and ocher cloak, on foot with spear and oval shield; 8. Viriathus, ancient Lusitanian leader, dark wool cloak and small round shield, on foot with javelin. Each is a readable painterly, semi-realistic, richly shaded miniature, full-body three-quarter facing right, all feet and gear visible. Mounted entries show the complete horse with the rider seated on its back. Keep each figure fully inside its cell with clear padding on all sides. Align feet near each cell's lower edge but clear of it. Absolutely no text, no dividers, no platform, no landscapes, no ground shadow, no extra figures. Prioritize recognizable color, historical costume and strong silhouette at 96 px.",
+      "edit_prompt": "Remove all white and gray mist, shadows and backgrounds between and around these game sprites. Set the background to genuine alpha zero throughout, including at every corner and every cell boundary. Preserve all eight figures, their original costumes, colors, poses, order and 4-column by 2-row layout. Preserve the complete horses and all limbs, costumes and weapons. Keep each character fully within its original grid cell. Clean contour edges with no halo. Output transparent RGBA only, with no floor, smoke, glow or replacement backdrop."
+    },
+    {
+      "file": "regional-heroes-02.png",
+      "columns": 4,
+      "rows": 2,
+      "heroes": [
+        "スキピオ・アフリカヌス",
+        "ラグナル・ロズブローク",
+        "アルミニウス",
+        "ヘルクス・モンテ",
+        "チャンドラグプタ",
+        "ラージャラージャ1世",
+        "ジャヤーヴァルマン7世",
+        "ガジャ・マダ"
+      ],
+      "prompt": "One production-ready game sprite atlas for a historical fantasy RTS. Exactly 4 columns by 2 rows in a wide 2:1 image, all cells equal size. Real transparent alpha background. Exactly one isolated character per cell. Row-major order (top left to right, then bottom left to right): 1. Scipio Africanus, Roman Republican general, red cloak and bronze cuirass, on foot with shield; 2. Ragnar Lodbrok, Norse saga warrior, dark blue cloak and mail, on foot with axe and round shield; 3. Arminius, early imperial-era Cheruscan leader, brown cloak and Germanic spear, on foot; 4. Herkus Monte, thirteenth-century Old Prussian leader, amber clasp and green cloak over chainmail, mounted with spear; 5. Chandragupta Maurya, early Indian ruler, gilded bronze cuirass and maroon scarf, on foot with sword; 6. Rajaraja Chola I, medieval Tamil ruler, red and gold textiles, on foot with sword; 7. Jayavarman VII, medieval Khmer ruler, draped ivory and dark red textiles, on foot with spear; 8. Gajah Mada, medieval Javanese chief minister, dark patterned kain and kris, on foot. Each is a readable painterly, semi-realistic, richly shaded miniature, full-body three-quarter facing right, all feet and gear visible. Mounted entries show the complete horse with the rider seated on its back. Keep each figure fully inside its cell with clear padding on all sides. Align feet near each cell's lower edge but clear of it. Absolutely no text, no dividers, no platform, no landscapes, no ground shadow, no extra figures. Prioritize recognizable color, historical costume and strong silhouette at 96 px."
+    },
+    {
+      "file": "regional-heroes-03.png",
+      "columns": 4,
+      "rows": 2,
+      "heroes": [
+        "ハーリド・イブン・アル＝ワリード",
+        "エル・ボートゥル",
+        "テルク",
+        "アキレウス",
+        "ロスタム",
+        "ハンニバル・バルカ",
+        "アマニレナス",
+        "スンジャタ・ケイタ"
+      ],
+      "prompt": "One production-ready game sprite atlas for a historical fantasy RTS. Exactly 4 columns by 2 rows in a wide 2:1 image, all cells equal size. Real transparent alpha background. Exactly one isolated character per cell. Row-major order (top left to right, then bottom left to right): 1. Khalid ibn al-Walid, seventh-century Arabian commander, sand-colored cloak and mail, mounted with sword; 2. Elley Bootur, legendary Sakha ancestor, dark blue fur-trimmed coat, mounted with bow; 3. Telku, fictional Itelmen coastal guardian of Kamchatka, slate fur parka and waterproof boots, on foot with bow; 4. Achilles, Greek epic hero, bronze armor and wine-red plume, on foot with spear and round shield; 5. Rostam, hero of the Persian Shahnameh, tiger-patterned armored coat, mounted on chestnut horse with mace; 6. Hannibal Barca, Punic general, burgundy cloak and bronze cuirass, mounted with spear; 7. Amanirenas, Nubian queen of Kush, gold jewelry and deep violet sash, on foot with bow; 8. Sundiata Keita, Mande founder of Mali, ocher and blue woven robes, on foot with spear. Each is a readable painterly, semi-realistic, richly shaded miniature, full-body three-quarter facing right, all feet and gear visible. Mounted entries show the complete horse with the rider seated on its back. Keep each figure fully inside its cell with clear padding on all sides. Align feet near each cell's lower edge but clear of it. Absolutely no text, no dividers, no platform, no landscapes, no ground shadow, no extra figures. Prioritize recognizable color, historical costume and strong silhouette at 96 px.",
+      "edit_prompt": "Remove all white and gray mist, shadows and backgrounds between and around these game sprites. Set the background to genuine alpha zero throughout, including at every corner and every cell boundary. Preserve all eight figures, their original costumes, colors, poses, order and 4-column by 2-row layout. Preserve the complete horses and all limbs, costumes and weapons. Keep each character fully within its original grid cell. Clean contour edges with no halo. Output transparent RGBA only, with no floor, smoke, glow or replacement backdrop."
+    },
+    {
+      "file": "regional-heroes-04.png",
+      "columns": 2,
+      "rows": 2,
+      "heroes": [
+        "モレミ・アジャソロ",
+        "エザナ",
+        "ナビラ",
+        "ネハンダ・チャルウェ"
+      ],
+      "prompt": "One production-ready game sprite atlas for a historical fantasy RTS. Exactly 2 columns by 2 rows in a square image, all cells equal size. Real transparent alpha background. Exactly one isolated character per cell. Row-major order (top left to right, then bottom left to right): 1. Moremi Ajasoro, heroine of Yoruba tradition, indigo woven cloth and coral beads, on foot with small shield; 2. Ezana, fourth-century Aksumite ruler, white mantle and gold circlet, on foot with spear; 3. Nabira, fictional Swahili coastal guardian of Kilwa, cream and turquoise textiles, on foot with bow; 4. Nehanda Charwe Nyakasikana, Shona spirit medium, dark russet woven wraps, on foot with a simple staff. Each is a readable painterly, semi-realistic, richly shaded miniature, full-body three-quarter facing right, all feet and gear visible. Mounted entries show the complete horse with the rider seated on its back. Keep each figure fully inside its cell with clear padding on all sides. Align feet near each cell's lower edge but clear of it. Absolutely no text, no dividers, no platform, no landscapes, no ground shadow, no extra figures. Prioritize recognizable color, historical costume and strong silhouette at 96 px."
+    }
+  ]
+}

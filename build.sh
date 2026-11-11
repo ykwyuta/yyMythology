@@ -23,9 +23,9 @@ mkdir -p dist
 cp web/index.html web/main.js web/browser-recovery.js web/manifest.webmanifest web/icon-192.png web/icon-512.png web/apple-touch-icon.png dist/
 cp assets/app_icon.ico dist/favicon.ico
 cp target/wasm32-unknown-unknown/release/yymythology.wasm dist/
-cp assets/mythology/divine.bgra dist/divine-v2.bgra
+cp assets/mythology/divine.bgra dist/divine-v3.bgra
 cp assets/mythology/buildings.bgra dist/buildings-v2.bgra
-gzip -n -c assets/mythology/divine.bgra > dist/divine-v2.bgra.gz
+gzip -n -c assets/mythology/divine.bgra > dist/divine-v3.bgra.gz
 gzip -n -c assets/mythology/buildings.bgra > dist/buildings-v2.bgra.gz
 # wasm-opt があればさらに小さくする（任意）
 if command -v wasm-opt >/dev/null 2>&1; then
@@ -43,11 +43,11 @@ cat > dist/_headers <<'H'
 /yymythology.wasm
   Content-Type: application/wasm
   Cache-Control: no-cache
-/divine-v2.bgra
+/divine-v3.bgra
   Cache-Control: no-cache
 /buildings-v2.bgra
   Cache-Control: no-cache
-/divine-v2.bgra.gz
+/divine-v3.bgra.gz
   Content-Type: application/gzip
   Cache-Control: no-cache
 /buildings-v2.bgra.gz

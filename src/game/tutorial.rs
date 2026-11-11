@@ -223,7 +223,6 @@ impl Game {
         self.do_act(Act::Restart);
         self.title_sel = Some(MONGOL);
         self.do_act(Act::Start);
-        self.world.heroic = false;
         self.world.protect_player = true;
         self.speed = 1;
         self.tut = Some(Tut { step: 0, base: Base::default(), done_t: None, moved: false, panel: (0.0, 0.0, 0.0, 0.0) });
