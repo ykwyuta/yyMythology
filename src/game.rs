@@ -3152,16 +3152,13 @@ impl Game {
         let px = w - 380.0;
         self.art.draw_stone_panel(&self.gfx, px, 0.0, w, h);
         self.art.draw_corner_ornaments(&self.gfx, px + 4.0, 4.0, w - 4.0, h - 4.0, 18.0);
-        // 英語の題字は長いので、扁額を広げた飾りを使う
-        let wide = crate::lang::lang() == crate::lang::Lang::En;
-        let crest = if wide { &self.art.title_crest_wide } else { &self.art.title_crest };
-        if let Some(crest) = crest {
-            self.gfx.draw_bitmap(crest, px + 20.0, 10.0, w - 20.0, 126.0);
+        if let Some(art) = &self.art.title_art {
+            self.gfx.draw_bitmap(art, px + 18.0, 8.0, w - 18.0, 130.0);
+            self.gfx.fill_rect(px + 18.0, 8.0, w - 18.0, 130.0, [0.02, 0.05, 0.09, 0.52]);
+            self.gfx.stroke_rect(px + 18.0, 8.0, w - 18.0, 130.0, 1.0, [0.79, 0.66, 0.40, 0.7]);
         }
         let title = t!("神話大戦", "Mythology", "神话大战");
-        let plaque = if wide { crate::art::TITLE_PLAQUE_W_WIDE } else { crate::art::TITLE_PLAQUE_W };
-        // 扁額（両端に少し余白）に収まらなければ一回り小さい書体で書く
-        let tf = if self.gfx.measure(title, Font::Title) <= plaque - 8.0 { Font::Title } else { Font::TitleMid };
+        let tf = if self.gfx.measure(title, Font::Title) <= 312.0 { Font::Title } else { Font::TitleMid };
         self.gfx.text_shadow(title, px, 19.0, 380.0, 56.0, tf, [1.0, 0.86, 0.42, 1.0]);
         self.gfx.text_shadow(t!("— ユーラシア・アフリカの覇権 —", "— Conquest of Eurasia and Africa —", "— 欧亚非争霸 —"), px, 76.0, 380.0, 28.0, Font::BigCenter, [0.96, 0.90, 0.78, 1.0]);
         self.gfx.text("YYMYTHOLOGY  /  EURASIA & AFRICA", px, 110.0, 380.0, 18.0, Font::NormalCenter, [0.58, 0.73, 0.77, 1.0]);

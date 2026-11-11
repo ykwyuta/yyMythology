@@ -20,7 +20,7 @@ cargo build --locked --release --lib --target wasm32-unknown-unknown --config pr
 
 rm -rf dist
 mkdir -p dist
-cp web/index.html web/main.js web/browser-recovery.js web/manifest.webmanifest web/icon-192.png web/icon-512.png web/apple-touch-icon.png dist/
+cp web/index.html web/main.js web/browser-recovery.js web/manifest.webmanifest web/icon-192.png web/icon-512.png web/apple-touch-icon.png web/key-art.jpg dist/
 cp assets/app_icon.ico dist/favicon.ico
 cp target/wasm32-unknown-unknown/release/yymythology.wasm dist/
 cp assets/mythology/divine.bgra dist/divine-v3.bgra
@@ -41,6 +41,18 @@ cat > dist/_headers <<'H'
 /main.js
   Cache-Control: no-cache
 /browser-recovery.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+/favicon.ico
+  Cache-Control: no-cache
+/icon-192.png
+  Cache-Control: no-cache
+/icon-512.png
+  Cache-Control: no-cache
+/apple-touch-icon.png
+  Cache-Control: no-cache
+/key-art.jpg
   Cache-Control: no-cache
 /yymythology.wasm
   Content-Type: application/wasm

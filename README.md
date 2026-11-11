@@ -58,3 +58,5 @@ YYMongolia のコミット [`1d0faef`](https://github.com/ykwyuta/yyMongolia/com
 地図は [Natural Earth v5.1.2](https://github.com/nvkelso/natural-earth-vector/tree/v5.1.2/geojson) のパブリックドメインデータを使用。海岸線の収録範囲はヨーロッパ・アジア・アフリカ。`tools/geoprep.py` に Natural Earth の `ne_50m_admin_0_countries.geojson`、`ne_50m_lakes.geojson`、`ne_50m_rivers_lake_centerlines.geojson` の入ったディレクトリと出力先 `src/geodata.rs` を渡すと再生成できる。
 
 勢力の入れ替えにより、セーブ形式が第3版になりました。第2版の対局は、旧版のゲームで再開してください。
+
+アプリアイコンと起動画面の生成元画像・プロンプトは `assets/brand/` に収録。配布用ファイルの再生成は `python tools/import_brand_art.py`。

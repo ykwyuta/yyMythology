@@ -76,13 +76,6 @@ def main():
         tile = buildings[6+i]
         tile.save(ROOT / 'assets' / 'map' / (name+'.png'))
         (ROOT / 'assets' / 'map' / (name+'.bgra')).write_bytes(bgra(tile))
-    # One identity for the desktop executable, browser installation and touch icon.
-    icon = Image.new('RGBA', (512,512), '#091923')
-    mark = ImageOps.contain(buildings[6], (448,448), Image.Resampling.LANCZOS)
-    icon.alpha_composite(mark, ((512-mark.width)//2, (512-mark.height)//2))
-    for filename, size in [('icon-512.png',512), ('icon-192.png',192), ('apple-touch-icon.png',180)]:
-        icon.resize((size,size), Image.Resampling.LANCZOS).save(ROOT / 'web' / filename)
-    icon.save(ROOT / 'assets' / 'app_icon.ico', sizes=[(16,16),(32,32),(48,48),(128,128),(256,256)])
 
 
 def import_hero_atlas(stem):

@@ -8,11 +8,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="神話大戦" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest?v=mythology-1" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=mythology-1" />
     <meta name="description" content="神話大戦 — ユーラシア・アフリカの覇権。剣と魔法のユーラシアとアフリカを舞台にしたリアルタイムストラテジー（ブラウザ版）" />
     <title>神話大戦 — ユーラシア・アフリカの覇権</title>
-    <link rel="icon" href="./favicon.ico" sizes="any" />
+    <link rel="icon" href="./favicon.ico?v=mythology-1" sizes="any" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet" />
@@ -36,9 +36,18 @@
       @keyframes rot { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
       /* 縦持ちでは文字が小さくなりすぎるので、横向きを促す（スマートフォン・タブレットとも） */
       @media (orientation: portrait) { :root.touch #rotate { display: flex; } }
-      #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        color: #eee8d6; font: 18px "Yu Gothic UI", "Noto Sans JP", sans-serif; background: radial-gradient(ellipse at 50% 35%, #173847, #091923 70%); gap: 24px; }
-      #loading h1 { margin: 0; font-family: Georgia, Yu Mincho, serif; font-size: clamp(28px, 5vw, 48px); letter-spacing: 0.18em; color: #c8b687; }
+      #loading { position: fixed; inset: 0; box-sizing: border-box; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; text-align: center;
+        padding: max(12vh, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+          max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+        color: #fff0cf; font: 18px "Yu Gothic UI", "Noto Sans JP", sans-serif;
+        background: linear-gradient(180deg, rgba(7, 17, 29, 0.12), rgba(7, 17, 29, 0.62) 52%, rgba(7, 17, 29, 0.92)),
+          #091923 url("./key-art.jpg?v=mythology-1") center / cover no-repeat;
+        gap: clamp(6px, 2vh, 18px); text-shadow: 0 2px 8px #050c16; }
+      #loading h1 { margin: 0; font-family: Georgia, "Yu Mincho", serif; font-size: clamp(30px, 7vw, 72px);
+        letter-spacing: 0.14em; color: #ffe1a0; }
+      #loading .subtitle { margin: 0; font-size: clamp(13px, 2.7vw, 19px); }
+      #loading-msg { font-size: clamp(13px, 2.5vw, 17px); }
       #loading.hidden { display: none; }
       #loading .err { color: #ff8a7a; max-width: 80vw; white-space: pre-wrap; font-size: 14px; }
     </style>
@@ -47,7 +56,11 @@
     <canvas id="gl"></canvas>
     <canvas id="ui" tabindex="0"></canvas>
     <div id="rotate"><div class="phone"></div><div id="rotate-msg">画面を横向きにしてお遊びください</div></div>
-    <div id="loading"><h1>神話大戦</h1><div id="loading-msg">読み込み中…</div></div>
+    <div id="loading">
+      <h1>神話大戦</h1>
+      <p class="subtitle">ユーラシア・アフリカの覇権</p>
+      <div id="loading-msg" role="status">読み込み中…</div>
+    </div>
     <script src="./browser-recovery.js"></script>
     <script type="module">
       const url = new URL('./main.js', location.href);
