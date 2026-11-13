@@ -644,6 +644,8 @@ impl World {
                 build_queue: std::collections::VecDeque::new(),
                 cargo: Vec::new(),
                 aboard: None,
+                walk_t: 0.0,
+                moving: false,
             };
             if alive {
                 u.nation = r.u8()?;

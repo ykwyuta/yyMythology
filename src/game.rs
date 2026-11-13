@@ -2791,6 +2791,8 @@ impl Game {
                 hero: u8,
                 god: u8,
                 divine: bool,
+                moving: bool,
+                walk_t: f32,
             },
         }
 
@@ -2967,6 +2969,8 @@ impl Game {
                             hero: u.hero,
                             god: u.god,
                             divine: u.divine,
+                            moving: u.moving,
+                            walk_t: u.walk_t,
                         },
                     ));
                 }
@@ -3036,7 +3040,7 @@ impl Game {
                             self.gfx.fill_round(sx - bw * 0.5, by, sx - bw * 0.5 + bw * f, by + 3.5, 1.5, [1.0 - f, 0.22 + 0.75 * f, 0.15, 0.95]);
                         }
                     }
-                    WorldItem::Unit { sx, sy, kind, nation, ut, pw, nc, carry, flip_x, hp_frac, hero, god, divine } => {
+                    WorldItem::Unit { sx, sy, kind, nation, ut, pw, nc, carry, flip_x, hp_frac, hero, god, divine, moving, walk_t } => {
                         let is_hero = (hero as usize) < HEROES.len();
                         let scale = if is_hero {
                             if kind == UnitKind::Cavalry { 0.88 } else { 0.78 }
@@ -3049,17 +3053,35 @@ impl Game {
                         };
                         let max_r = if is_hero { 27.0 } else if divine || god != NONE { 24.0 } else { 22.0 };
                         let r = (z * scale * (1.0 + 0.04 * (pw - 1.0).min(4.0))).clamp(7.5, max_r);
-                        let u_bmp = if god != NONE {
-                            self.art.summoned_god(god, flip_x)
-                        } else if is_hero {
-                            self.art.period_hero(&self.gfx, hero as usize, flip_x)
-                        } else if divine {
-                            self.art.divine_unit_sprite(kind, flip_x)
+                        let (frame, bob_y) = if moving {
+                            let s = walk_t.sin();
+                            let frame = if s > 0.35 {
+                                1
+                            } else if s < -0.35 {
+                                2
+                            } else {
+                                0
+                            };
+                            let bob_y = match kind {
+                                UnitKind::Ship => -s * r * 0.03,
+                                UnitKind::Cavalry => -walk_t.cos().abs() * r * 0.045,
+                                _ => -(walk_t * 2.0).cos().max(0.0) * r * 0.035,
+                            };
+                            (frame, bob_y)
                         } else {
-                            self.art.national_unit(&self.gfx, nation, ut, flip_x)
+                            (0, 0.0)
+                        };
+                        let u_bmp = if god != NONE {
+                            self.art.summoned_god_frame(&self.gfx, god, flip_x, frame)
+                        } else if is_hero {
+                            self.art.period_hero_frame(&self.gfx, hero as usize, flip_x, frame)
+                        } else if divine {
+                            self.art.divine_unit_sprite_frame(&self.gfx, kind, flip_x, frame)
+                        } else {
+                            self.art.national_unit_frame(&self.gfx, nation, ut, flip_x, frame)
                         };
                         if let Some(bmp) = u_bmp {
-                            self.gfx.draw_bitmap(bmp, sx - r, sy - r * 1.35, sx + r, sy + r * 0.65);
+                            self.gfx.draw_bitmap(bmp, sx - r, sy - r * 1.35 + bob_y, sx + r, sy + r * 0.65 + bob_y);
                         }
                         // 足元右下の国色小紋章（天の軍は神々しい白金紋章）
                         let pr = (r * 0.19).clamp(2.2, 3.8);
