@@ -1,5 +1,6 @@
 //! 画面・入力・HUD（独自実装の UI）
 
+mod corps;
 mod heroes;
 mod demons;
 mod mythology;
@@ -110,6 +111,10 @@ enum Act {
     AllWorkersMine,
     AllWorkersUpgrade,
     ArmyDefend,
+    ToggleCorps,
+    FormCorps,
+    SelectCorps(usize),
+    DisbandCorps,
     AllArmyAttack,
     AllArmyDefend,
     AllArmyUpgrade,
@@ -213,6 +218,9 @@ pub struct Game {
     sel: Vec<Handle>,
     sel_b: Vec<Handle>,
     groups: Vec<Vec<Handle>>,
+    corps: [Vec<Handle>; corps::CORPS_SLOTS],
+    active_corps: Option<usize>,
+    show_corps: bool,
     speed: u32,
     paused: bool,
     /// 部隊を選んでから命令するまでの一時停止
@@ -366,6 +374,9 @@ impl Game {
             sel: Vec::new(),
             sel_b: Vec::new(),
             groups: vec![Vec::new(); 10],
+            corps: Default::default(),
+            active_corps: None,
+            show_corps: false,
             speed: 1,
             paused: false,
             acc: 0.0,
@@ -808,6 +819,7 @@ impl Game {
             let pl = self.world.player;
             let sel: Vec<Handle> = self.sel.iter().copied().filter(|&h| self.world.unit(h).map_or(false, |u| u.nation as usize == pl || self.seen(u.pos))).collect();
             self.sel = sel;
+            self.prune_corps();
             let barracks_group = self.sel_b.len() > 1;
             self.sel_b.retain(|&h| {
                 self.world.bld(h).is_some_and(|b| !barracks_group || b.nation as usize == pl)
@@ -1082,8 +1094,12 @@ impl Game {
                             Mode::PlantForest(_) => self.ldown = Some((x, y)),
                             Mode::AttackMove => {
                                 let p = self.screen_to_world(x, y);
-                                let hs = self.own_sel();
-                                self.world.order_move(&hs, p, true);
+                                if self.active_corps.is_some() {
+                                    self.order_corps_advance(p);
+                                } else {
+                                    let hs = self.own_sel();
+                                    self.world.order_move(&hs, p, true);
+                                }
                                 self.marker = Some((p, 0.6, true));
                                 self.mode = Mode::Normal;
                                 if let Some(t) = &mut self.tut {
@@ -1223,6 +1239,8 @@ impl Game {
             VK_ESCAPE => {
                 if self.mode != Mode::Normal {
                     self.mode = Mode::Normal;
+                } else if self.show_corps {
+                    self.show_corps = false;
                 } else if self.world.banner.is_some() && !self.overlay_open() {
                     // 出来事の告知を閉じる
                     self.world.dismiss_banner();
@@ -1273,6 +1291,8 @@ impl Game {
 
     fn clear_sel(&mut self) {
         self.discard_pending = false;
+        self.active_corps = None;
+        self.show_corps = false;
         for h in self.sel.drain(..) {
             if let Some(u) = self.world.unit_mut(h) {
                 u.selected = false;
@@ -1503,7 +1523,7 @@ impl Game {
     }
 
     /// 軍事ユニットに領内防衛・侵入者迎撃・城邑集結を命じる
-    fn order_army_defend(&mut self, hs: &[Handle]) {
+    fn order_army_defend(&mut self, hs: &[Handle], as_corps: bool) {
         if hs.is_empty() {
             self.notice(t!("軍事ユニットがいない", "No soldiers", "没有军事单位"));
             return;
@@ -1523,7 +1543,11 @@ impl Game {
             }
         }
         if let Some(p) = intruder {
-            self.world.order_move(hs, p, true);
+            if as_corps {
+                self.move_corps(hs, p);
+            } else {
+                self.world.order_move(hs, p, true);
+            }
             self.marker = Some((p, 0.6, true));
             self.notice(&tf!("{}部隊に領内侵入者の迎撃を命じた", "Ordered {} units to intercept intruders", "命令{}个单位迎击入侵者", hs.len()));
             if let Some(t) = &mut self.tut {
@@ -1538,7 +1562,24 @@ impl Game {
             .filter(|b| b.alive && b.nation as usize == pl && b.kind.city() && b.done())
             .map(|b| b.center())
             .collect();
-        let rally = if cities.is_empty() {
+        let rally = if as_corps {
+            let mut center = v2(0.0, 0.0);
+            for &h in hs {
+                center = center + self.world.unit(h).unwrap().pos;
+            }
+            center = center * (1.0 / hs.len() as f32);
+            let city = cities.iter().copied().min_by(|a, b| a.dist(center).total_cmp(&b.dist(center)));
+            let goal = city.map_or(home, |c| {
+                [v2(2.2, 0.0), v2(-2.2, 0.0), v2(0.0, 2.2), v2(0.0, -2.2)]
+                    .into_iter()
+                    .map(|off| c + off)
+                    .filter(|&p| self.world.passable_at(p))
+                    .min_by(|a, b| a.dist(center).total_cmp(&b.dist(center)))
+                    .unwrap_or(c)
+            });
+            self.move_corps(hs, goal);
+            goal
+        } else if cities.is_empty() {
             home
         } else {
             // 各部隊から最も近い自国城邑へ帰還・防衛配置
@@ -2059,6 +2100,7 @@ impl Game {
                 self.screen = Screen::Title;
                 self.title_sel = None;
                 self.clear_sel();
+                self.reset_corps();
                 self.show_diplo = false;
                 self.show_help = false;
                 self.show_chron = false;
@@ -2167,7 +2209,11 @@ impl Game {
             }
             Act::AttackMove => {
                 if !self.own_sel().is_empty() {
+                    self.show_corps = false;
                     self.mode = Mode::AttackMove;
+                    if self.active_corps.is_some() {
+                        self.notice(t!("軍団の進軍先を地図上で指定してください", "Choose where the corps should advance", "请在地图上选择军团进军的目标"));
+                    }
                 }
             }
             Act::SelectAllWorkers => {
@@ -2238,15 +2284,26 @@ impl Game {
                 }
             }
             Act::ArmyDefend => {
-                let hs: Vec<Handle> = self.own_sel().into_iter().filter(|&h| self.world.unit(h).map_or(false, |u| u.kind.military())).collect();
-                self.order_army_defend(&hs);
+                let hs = self.selected_soldiers();
+                self.mode = Mode::Normal;
+                self.show_corps = false;
+                self.order_army_defend(&hs, self.active_corps.is_some());
             }
+            Act::ToggleCorps if self.corps_controls_available() => {
+                self.mode = Mode::Normal;
+                self.ldown = None;
+                self.show_corps = !self.show_corps;
+            }
+            Act::FormCorps if self.corps_controls_available() && self.show_corps => self.form_corps(),
+            Act::SelectCorps(slot) if self.corps_controls_available() && self.show_corps => self.select_corps(slot),
+            Act::DisbandCorps if self.corps_controls_available() && self.show_corps => self.disband_corps(),
+            Act::ToggleCorps | Act::FormCorps | Act::SelectCorps(_) | Act::DisbandCorps => {}
             Act::AllArmyAttack => {
                 self.order_all_army_attack();
             }
             Act::AllArmyDefend => {
                 let hs = self.all_military();
-                self.order_army_defend(&hs);
+                self.order_army_defend(&hs, false);
             }
             Act::AllArmyUpgrade => {
                 let hs = self.all_military();
@@ -3719,17 +3776,39 @@ impl Game {
         let iw = w - ix - 394.0;
         self.art.draw_inset_box(&self.gfx, ix, py + 6.0, ix + iw, h - 4.0);
         self.art.draw_corner_ornaments(&self.gfx, ix + 2.0, py + 8.0, ix + iw - 2.0, h - 6.0, 11.0);
-        self.render_info(ix + 12.0, py + 12.0, iw - 24.0);
+        let corps_available = self.corps_controls_available();
+        if !corps_available {
+            self.show_corps = false;
+        }
+        if self.show_corps {
+            self.render_corps(ix + 12.0, py + 12.0, iw - 24.0);
+        } else {
+            self.render_info(ix + 12.0, py + 12.0, iw - 24.0);
+        }
         // 民を選んでいれば英霊召喚ボタン
-        if self.own_sel().iter().any(|&h| self.world.unit(h).map_or(false, |u| u.kind == UnitKind::Worker)) {
+        if !self.show_corps && self.own_sel().iter().any(|&h| self.world.unit(h).map_or(false, |u| u.kind == UnitKind::Worker)) {
             let tip = if self.world.hero_of(pl).is_some() { t!("英霊は一国に一体だけ。いまの英霊が倒れれば、また呼べる", "Only one spirit per state. If yours falls, you can summon again", "每国只能有一位英灵。现有英灵倒下后可再次召唤") } else { t!("選んだ民を生贄に捧げ、英霊を呼ぶ（英霊の能力＝生贄の能力の合計×1.1〜3.0）", "Sacrifice the selected workers to summon a heroic spirit (spirit power = total sacrificed power × 1.1–3.0)", "献祭所选的民，召唤英灵（英灵能力＝祭品能力总和×1.1〜3.0）") };
             self.add_button(ix + iw - 176.0, h - 58.0, ix + iw - 14.0, h - 14.0, t!("英霊召喚", "Summon Spirit", "召唤英灵"), t!("民を生贄に", "sacrifice workers", "献祭民"), 'H' as u32, self.world.hero_of(pl).is_none(), Act::Summon, tip);
         }
 
         // スマートフォン：選択や建設場所選びを指で解く ✕
-        if self.gfx.compact && (self.mode != Mode::Normal || !self.sel.is_empty() || !self.sel_b.is_empty()) {
+        if !self.show_corps && self.gfx.compact && (self.mode != Mode::Normal || !self.sel.is_empty() || !self.sel_b.is_empty()) {
             let tip = if self.mode != Mode::Normal { t!("取り消す", "Cancel", "取消") } else { t!("選択を解く", "Deselect", "取消选择") };
             self.add_button(ix + iw - 46.0, py + 10.0, ix + iw - 8.0, py + 48.0, "✕", "", 0, true, Act::Cancel, tip);
+        }
+
+        if corps_available {
+            let label = if self.show_corps {
+                t!("閉じる", "Close", "关闭").to_string()
+            } else if let Some(slot) = self.active_corps {
+                tf!("第{}軍団", "Corps {}", "第{}军团", slot + 1)
+            } else {
+                t!("軍団", "Corps", "军团").to_string()
+            };
+            let button_x = if self.show_corps { ix + iw - 104.0 } else { ix + 12.0 };
+            let button_y = if self.show_corps { py + 8.0 } else { h - 46.0 };
+            self.add_button(button_x, button_y, button_x + 92.0, button_y + 34.0, &label, "", 'J' as u32, true, Act::ToggleCorps,
+                t!("軍団の編成・呼び出し・解散（J）", "Form, recall, or disband corps (J)", "组建、召回或解散军团（J）"));
         }
 
         // 右側のコマンド欄ボックス
@@ -4505,9 +4584,9 @@ impl Game {
             "", 0, true, Act::RefreshCache, "");
         self.art.draw_inset_box(&self.gfx, x0 + 14.0, y0 + 46.0, x0 + pw - 14.0, y0 + ph - 14.0);
         let text = t!(
-            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。自動戦闘では射程内の敵建物にメテオを優先し、敵建物がなければ敵部隊にファイヤーボールを放つ。ファイヤーボールは詠唱なしの単体射撃。メテオは4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は陸地を巡回し、移動する攻撃範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。完成済みの兵営をダブルクリックすると、画面内の自軍の完成済み兵営をまとめて選び、一括生産できる。Spaceで一時停止、F4で交易、F5で記録。",
-            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Mages prioritize Meteor if an enemy building is in range. Otherwise they fire Fireball at enemy troops. Fireball is an instant single-target shot. Meteor takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn roam over land and attack every unit in their moving range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Double-click a completed barracks to select all your completed barracks on screen and queue units together. Space pauses, F4 opens trade and F5 opens saves.",
-            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。射程内有敌方建筑时，法师优先自动施放陨石术，否则向敌军发射火球。火球术无需吟唱，立即射击单个目标。陨石术需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神会在陆地巡逻，并攻击移动范围内的所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。双击已完工的兵营可选中屏幕内己方所有已完工的兵营并批量生产。空格暂停，F4 打开贸易，F5 打开存档。"
+            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。自動戦闘では射程内の敵建物にメテオを優先し、敵建物がなければ敵部隊にファイヤーボールを放つ。ファイヤーボールは詠唱なしの単体射撃。メテオは4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は陸地を巡回し、移動する攻撃範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n軍事ユニットを2体以上選択し、「軍団」（J）から編成。軍団番号で呼び出し、Aで進軍先を指定、Dで領内の迎撃・防衛集結を命じる。\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。完成済みの兵営をダブルクリックすると、画面内の自軍の完成済み兵営をまとめて選び、一括生産できる。Spaceで一時停止、F4で交易、F5で記録。",
+            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Mages prioritize Meteor if an enemy building is in range. Otherwise they fire Fireball at enemy troops. Fireball is an instant single-target shot. Meteor takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn roam over land and attack every unit in their moving range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nSelect at least two military units and open Corps (J) to form a corps. Recall it by its button, then press A and pick an advance destination, or press D to intercept intruders or rally for defense.\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Double-click a completed barracks to select all your completed barracks on screen and queue units together. Space pauses, F4 opens trade and F5 opens saves.",
+            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。射程内有敌方建筑时，法师优先自动施放陨石术，否则向敌军发射火球。火球术无需吟唱，立即射击单个目标。陨石术需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神会在陆地巡逻，并攻击移动范围内的所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n选中至少两个己方军事单位，从“军团”（J）组建。点击军团编号召回，按 A 指定进军目标，按 D 迎击入侵者或集结防守。\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。双击已完工的兵营可选中屏幕内己方所有已完工的兵营并批量生产。空格暂停，F4 打开贸易，F5 打开存档。"
         );
         // 入りきらなければ小さい字にする
         let f = if self.gfx.measure_h(text, Font::Normal, pw - 48.0) > ph - 64.0 { Font::Small } else { Font::Normal };
