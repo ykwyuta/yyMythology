@@ -330,6 +330,9 @@ pub struct Unit {
     pub cargo: Vec<Handle>,
     /// 乗っている船（乗船中は地図に現れない）
     pub aboard: Option<Handle>,
+    /// 移動アニメーションの位相 (0..TAU) と移動中フラグ（描画専用・セーブ対象外）
+    pub walk_t: f32,
+    pub moving: bool,
 }
 
 impl Unit {
@@ -907,6 +910,8 @@ impl World {
             build_queue: VecDeque::new(),
             cargo: Vec::new(),
             aboard: None,
+            walk_t: self.rng.f32() * std::f32::consts::TAU,
+            moving: false,
         };
         if let Some(i) = self.free_units.pop() {
             let gen = self.units[i as usize].gen + 1;
@@ -2715,6 +2720,7 @@ impl World {
         let mv = (sp * dt).min(l);
         let np = u.pos + d * (mv / l);
         let dir = d * (1.0 / l);
+        let old_pos = u.pos;
         let ok = self.passable_l(np, naval) || !self.passable_l(u.pos, naval);
         let u = &mut self.units[i];
         u.dir = dir;
@@ -2728,6 +2734,17 @@ impl World {
             } else if self.passable_l(b, naval) {
                 self.units[i].pos = b;
             }
+        }
+        let u = &mut self.units[i];
+        let moved = old_pos.dist(u.pos);
+        if moved > 1e-4 {
+            u.moving = true;
+            let cadence = match u.kind {
+                UnitKind::Cavalry => 2.2,
+                UnitKind::Ship => 1.4,
+                _ => 2.8,
+            };
+            u.walk_t = (u.walk_t + moved * cadence).rem_euclid(std::f32::consts::TAU);
         }
     }
 
@@ -2804,6 +2821,7 @@ impl World {
             u.cooldown -= dt;
             u.flash = (u.flash - dt).max(0.0);
             u.scan_t -= dt;
+            u.moving = false;
         }
         let order = self.units[i].order;
         let ni = self.units[i].nation as usize;

@@ -368,6 +368,132 @@ impl Canvas {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum MovePoseStyle {
+    Foot,
+    Mounted,
+    Ship,
+}
+
+#[inline]
+fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+    let t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+#[inline]
+fn sample_premul_bgra(raw: &[u8], sz: usize, fx: f32, fy: f32) -> [f32; 4] {
+    if fx < -0.5 || fy < -0.5 || fx > sz as f32 - 0.5 || fy > sz as f32 - 0.5 {
+        return [0.0; 4];
+    }
+    let sx = fx.clamp(0.0, (sz - 1) as f32);
+    let sy = fy.clamp(0.0, (sz - 1) as f32);
+    let x0 = sx.floor() as usize;
+    let y0 = sy.floor() as usize;
+    let x1 = (x0 + 1).min(sz - 1);
+    let y1 = (y0 + 1).min(sz - 1);
+    let tx = sx - x0 as f32;
+    let ty = sy - y0 as f32;
+    let px = |x: usize, y: usize| -> [f32; 4] {
+        let o = (y * sz + x) * 4;
+        [raw[o] as f32, raw[o + 1] as f32, raw[o + 2] as f32, raw[o + 3] as f32]
+    };
+    let c00 = px(x0, y0);
+    let c10 = px(x1, y0);
+    let c01 = px(x0, y1);
+    let c11 = px(x1, y1);
+    let mut out = [0.0; 4];
+    for k in 0..4 {
+        let top = c00[k] + (c10[k] - c00[k]) * tx;
+        let bot = c01[k] + (c11[k] - c01[k]) * tx;
+        out[k] = top + (bot - top) * ty;
+    }
+    out
+}
+
+/// 元の静止画スプライトから歩行・騎乗・航行の差分フレームを逆写像＋バイリニア補間で生成する。
+pub(super) fn load_unit_walk_frame_bgra(
+    raw: &[u8], sz: usize, flip_x: bool, style: MovePoseStyle, phase: f32,
+) -> Vec<u32> {
+    if phase.abs() < 1e-4 {
+        return load_raw_sprite_bgra(raw, sz, flip_x, 1.0);
+    }
+    // 下半身（脚・蹄・船体下部）の重心Xを基準に左右・前後脚を滑らかに分離する
+    let mut sum_x = 0.0f32;
+    let mut sum_w = 0.0f32;
+    for y in (sz * 55 / 100)..(sz * 96 / 100) {
+        for x in 0..sz {
+            let a = raw[(y * sz + x) * 4 + 3] as f32;
+            if a > 24.0 {
+                sum_x += x as f32 * a;
+                sum_w += a;
+            }
+        }
+    }
+    let cx = if sum_w > 1.0 { (sum_x / sum_w) / sz as f32 } else { 0.5 };
+    let inv_sz = 1.0 / sz as f32;
+    let mut out = vec![0u32; sz * sz];
+    let (rot_sin, rot_cos) = if style == MovePoseStyle::Ship {
+        let a = -phase * 0.055;
+        (a.sin(), a.cos())
+    } else {
+        (0.0, 1.0)
+    };
+
+    for y in 0..sz {
+        for x in 0..sz {
+            let ux = if flip_x { sz - 1 - x } else { x };
+            let nx = (ux as f32 + 0.5) * inv_sz;
+            let ny = (y as f32 + 0.5) * inv_sz;
+            let (src_nx, src_ny) = match style {
+                MovePoseStyle::Foot => {
+                    let leg_w = smoothstep(0.56, 0.76, ny);
+                    let torso_w = 1.0 - leg_w;
+                    let side = ((nx - cx) / 0.09).clamp(-1.0, 1.0);
+                    let stride_x = phase * 0.045 * side * leg_w;
+                    let front_lift = (phase * side).max(0.0) * 0.028 * leg_w;
+                    let lean_x = 0.022 * (1.0 - ny).max(0.0) * torso_w;
+                    let arm_band = smoothstep(0.24, 0.36, ny) * (1.0 - smoothstep(0.52, 0.64, ny));
+                    let outer = ((nx - cx).abs() / 0.14).clamp(0.0, 1.0);
+                    let arm_x = -phase * 0.020 * side * arm_band * outer;
+                    let drop_y = 0.016 * phase.abs() * (1.0 - leg_w * 0.4);
+                    (nx - (stride_x + lean_x + arm_x), ny + front_lift - drop_y)
+                }
+                MovePoseStyle::Mounted => {
+                    let leg_w = smoothstep(0.60, 0.78, ny);
+                    let body_w = 1.0 - leg_w;
+                    let side = ((nx - cx) / 0.12).clamp(-1.0, 1.0);
+                    let stride_x = phase * 0.055 * side * leg_w;
+                    let lift_y = (phase * side).max(0.0) * 0.038 * leg_w;
+                    let pitch_y = -phase * 0.026 * side * body_w;
+                    let lean_x = 0.024 * (1.0 - ny).max(0.0) * body_w;
+                    let bounce_y = 0.018 * phase.abs();
+                    (nx - (stride_x + lean_x), ny + lift_y + pitch_y - bounce_y)
+                }
+                MovePoseStyle::Ship => {
+                    let dx = nx - cx;
+                    let dy = ny - 0.72;
+                    (
+                        cx + dx * rot_cos - dy * rot_sin,
+                        0.72 + dx * rot_sin + dy * rot_cos - phase * 0.018,
+                    )
+                }
+            };
+            let c = sample_premul_bgra(raw, sz, src_nx * sz as f32 - 0.5, src_ny * sz as f32 - 0.5);
+            let a = (c[3].round() as u32).min(255);
+            if a == 0 {
+                continue;
+            }
+            // プレマルチプライドBGRAの上限をalphaに揃えて不正な発色を防ぐ
+            let b = (c[0].round() as u32).min(a);
+            let g = (c[1].round() as u32).min(a);
+            let r = (c[2].round() as u32).min(a);
+            out[y * sz + x] = b | (g << 8) | (r << 16) | (a << 24);
+        }
+    }
+    out
+}
+
 fn load_raw_sprite_bgra(raw: &[u8], sz: usize, flip_x: bool, mul: f32) -> Vec<u32> {
     let mut out = vec![0u32; sz * sz];
     for y in 0..sz {
@@ -843,6 +969,14 @@ impl Art {
 
     pub fn divine_unit_sprite(&self, k: UnitKind, flip: bool) -> Option<&ID2D1Bitmap> {
         self.period.legacy_extra(if k == UnitKind::Cavalry { 6 } else { 5 }, flip, false)
+    }
+    pub fn divine_unit_sprite_frame(&self, gfx: &Gfx, k: UnitKind, flip: bool, frame: u8) -> Option<&ID2D1Bitmap> {
+        if frame == 0 {
+            return self.divine_unit_sprite(k, flip);
+        }
+        let idx = if k == UnitKind::Cavalry { 6 } else { 5 };
+        let style = if k == UnitKind::Cavalry { MovePoseStyle::Mounted } else { MovePoseStyle::Foot };
+        self.period.legacy_extra_walk(gfx, idx, flip, style, frame)
     }
     pub fn divine_bld_sprite(&self, _k: BKind, fog: bool) -> Option<&ID2D1Bitmap> {
         self.period.legacy_extra(7, false, fog)

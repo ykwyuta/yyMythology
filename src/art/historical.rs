@@ -92,6 +92,41 @@ fn empty_sprites(count: usize) -> Vec<CachedSprite> {
     (0..count).map(|_| OnceCell::new()).collect()
 }
 
+fn walk_phase(frame: u8) -> f32 {
+    match frame {
+        1 => 1.0,
+        2 => -1.0,
+        _ => 0.0,
+    }
+}
+
+fn pose_style_for_kind(kind: UnitKind) -> MovePoseStyle {
+    match kind {
+        UnitKind::Cavalry => MovePoseStyle::Mounted,
+        UnitKind::Ship => MovePoseStyle::Ship,
+        _ => MovePoseStyle::Foot,
+    }
+}
+
+fn pose_style_for_slot(slot: usize) -> MovePoseStyle {
+    match slot {
+        3 | 4 => MovePoseStyle::Mounted,
+        7 => MovePoseStyle::Ship,
+        _ => MovePoseStyle::Foot,
+    }
+}
+
+fn cached_walk_sprite<'a>(
+    gfx: &Gfx, cache: &'a [CachedSprite], slot: usize, frame: u8,
+    raw_fn: impl FnOnce() -> Cow<'static, [u8]>, size: usize, flip: bool, style: MovePoseStyle,
+) -> Option<&'a ID2D1Bitmap> {
+    let idx = slot * 2 + usize::from(frame == 2);
+    cache.get(idx)?.get_or_init(|| {
+        let raw = raw_fn();
+        gfx.create_bitmap(size as u32, size as u32, &load_unit_walk_frame_bgra(&raw, size, flip, style, walk_phase(frame)))
+    }).as_ref()
+}
+
 fn cached_sprite<'a>(
     gfx: &Gfx, cache: &'a [CachedSprite], atlas: Atlas, slot: usize, size: usize, flip: bool, brightness: f32,
 ) -> Option<&'a ID2D1Bitmap> {
@@ -157,6 +192,18 @@ pub(super) struct PeriodArt {
     buildings_fog: Vec<CachedSprite>,
     units: Vec<CachedSprite>,
     units_flip: Vec<CachedSprite>,
+    neutral_walk: Vec<CachedSprite>,
+    neutral_walk_flip: Vec<CachedSprite>,
+    extra_walk: Vec<CachedSprite>,
+    extra_walk_flip: Vec<CachedSprite>,
+    heroes_walk: Vec<CachedSprite>,
+    heroes_walk_flip: Vec<CachedSprite>,
+    divine_walk: Vec<CachedSprite>,
+    divine_walk_flip: Vec<CachedSprite>,
+    elephants_walk: Vec<CachedSprite>,
+    elephants_walk_flip: Vec<CachedSprite>,
+    units_walk: Vec<CachedSprite>,
+    units_walk_flip: Vec<CachedSprite>,
 }
 
 impl PeriodArt {
@@ -183,27 +230,80 @@ impl PeriodArt {
         self.buildings_fog = empty_sprites(NATIONS.len() * BUILDINGS_PER_NATION);
         self.units = empty_sprites(NATIONS.len() * UNITS_PER_NATION);
         self.units_flip = empty_sprites(NATIONS.len() * UNITS_PER_NATION);
+        self.neutral_walk = empty_sprites(6 * 2);
+        self.neutral_walk_flip = empty_sprites(6 * 2);
+        self.extra_walk = empty_sprites(8 * 2);
+        self.extra_walk_flip = empty_sprites(8 * 2);
+        self.heroes_walk = empty_sprites(PORTRAIT_HERO_COUNT * 2);
+        self.heroes_walk_flip = empty_sprites(PORTRAIT_HERO_COUNT * 2);
+        self.divine_walk = empty_sprites(DIVINE_COUNT * 2);
+        self.divine_walk_flip = empty_sprites(DIVINE_COUNT * 2);
+        self.elephants_walk = empty_sprites((ELEPHANT_NATIONS.len() + 1) * 2);
+        self.elephants_walk_flip = empty_sprites((ELEPHANT_NATIONS.len() + 1) * 2);
+        self.units_walk = empty_sprites(NATIONS.len() * UNITS_PER_NATION * 2);
+        self.units_walk_flip = empty_sprites(NATIONS.len() * UNITS_PER_NATION * 2);
     }
 
     pub(super) fn legacy_extra(&self, idx: usize, flip: bool, fog: bool) -> Option<&ID2D1Bitmap> {
         (if fog { &self.extra_fog } else if flip { &self.extra_flip } else { &self.extra }).get(idx).and_then(Option::as_ref)
     }
+
+    pub(super) fn legacy_extra_walk(
+        &self, gfx: &Gfx, idx: usize, flip: bool, style: MovePoseStyle, frame: u8,
+    ) -> Option<&ID2D1Bitmap> {
+        let cache = if flip { &self.extra_walk_flip } else { &self.extra_walk };
+        cached_walk_sprite(
+            gfx, cache, idx, frame,
+            || Cow::Borrowed(&EXTRA[idx * LEGACY_CELL..(idx + 1) * LEGACY_CELL]),
+            LEGACY_SIZE, flip, style,
+        )
+    }
 }
 
 impl Art {
     pub fn national_unit(&self, gfx: &Gfx, nation: usize, ut: u8, flip: bool) -> Option<&ID2D1Bitmap> {
+        self.national_unit_frame(gfx, nation, ut, flip, 0)
+    }
+
+    pub fn national_unit_frame(&self, gfx: &Gfx, nation: usize, ut: u8, flip: bool, frame: u8) -> Option<&ID2D1Bitmap> {
         if ut == UT_WAR_ELEPHANT {
             let slot = ELEPHANT_NATIONS.iter().position(|&n| n == nation).unwrap_or(ELEPHANT_NATIONS.len());
-            let sprites = if flip { &self.period.elephants_flip } else { &self.period.elephants };
-            return sprites.get(slot).and_then(Option::as_ref);
+            if frame == 0 {
+                let sprites = if flip { &self.period.elephants_flip } else { &self.period.elephants };
+                return sprites.get(slot).and_then(Option::as_ref);
+            }
+            let cell = ELEPHANT_SIZE * ELEPHANT_SIZE * 4;
+            let cache = if flip { &self.period.elephants_walk_flip } else { &self.period.elephants_walk };
+            return cached_walk_sprite(
+                gfx, cache, slot, frame,
+                || Cow::Borrowed(&ELEPHANTS_RAW[slot * cell..(slot + 1) * cell]),
+                ELEPHANT_SIZE, flip, MovePoseStyle::Mounted,
+            );
         }
         let slot = unit_slot(ut);
-        let steppe = if flip { &self.period.neutral_flip } else { &self.period.neutral };
+        let style = pose_style_for_slot(slot);
+        let neutral_cell = |idx: usize| -> Option<&ID2D1Bitmap> {
+            if frame == 0 {
+                let steppe = if flip { &self.period.neutral_flip } else { &self.period.neutral };
+                steppe.get(idx).and_then(Option::as_ref)
+            } else {
+                let cache = if flip { &self.period.neutral_walk_flip } else { &self.period.neutral_walk };
+                cached_walk_sprite(
+                    gfx, cache, idx, frame,
+                    || Cow::Borrowed(&NEUTRAL_UNITS[idx * LEGACY_CELL..(idx + 1) * LEGACY_CELL]),
+                    LEGACY_SIZE, flip, style,
+                )
+            }
+        };
         if nation >= NATIONS.len() {
             return match slot {
-                7 => self.period.legacy_extra(0, flip, false),
-                6 => self.mythology_unit(MAGE_SLOT, flip),
-                _ => steppe.get(slot).and_then(Option::as_ref),
+                7 => if frame == 0 {
+                    self.period.legacy_extra(0, flip, false)
+                } else {
+                    self.period.legacy_extra_walk(gfx, 0, flip, MovePoseStyle::Ship, frame)
+                },
+                6 => self.mythology_unit_frame(gfx, MAGE_SLOT, flip, frame),
+                _ => neutral_cell(slot),
             };
         }
         // Keep original illustrations of named ships and unusual equipment when they were already unique.
@@ -216,19 +316,33 @@ impl Art {
             _ => None,
         };
         if let Some(index) = legacy_special {
-            return self.period.legacy_extra(index, flip, false);
+            return if frame == 0 {
+                self.period.legacy_extra(index, flip, false)
+            } else {
+                self.period.legacy_extra_walk(gfx, index, flip, style, frame)
+            };
         }
         if ut == 6 {
-            return steppe.get(5).and_then(Option::as_ref);
+            return neutral_cell(5);
         }
         // A uniquely recruited unit keeps its founding culture's dress when recruited by an overlord.
         let origin = UNIQUE_UNIT_ORIGINS.get(ut as usize).copied().flatten().unwrap_or(nation);
-        self.faction_unit(gfx, origin, slot, flip)
+        self.faction_unit_frame(gfx, origin, slot, flip, frame)
     }
 
-    fn faction_unit(&self, gfx: &Gfx, nation: usize, slot: usize, flip: bool) -> Option<&ID2D1Bitmap> {
-        let cache = if flip { &self.period.units_flip } else { &self.period.units };
-        cached_sprite(gfx, cache, Atlas::Units, nation * UNITS_PER_NATION + slot, UNIT_SIZE, flip, 1.0)
+    fn faction_unit_frame(&self, gfx: &Gfx, nation: usize, slot: usize, flip: bool, frame: u8) -> Option<&ID2D1Bitmap> {
+        let atlas_slot = nation * UNITS_PER_NATION + slot;
+        if frame == 0 {
+            let cache = if flip { &self.period.units_flip } else { &self.period.units };
+            return cached_sprite(gfx, cache, Atlas::Units, atlas_slot, UNIT_SIZE, flip, 1.0);
+        }
+        let cache = if flip { &self.period.units_walk_flip } else { &self.period.units_walk };
+        let len = UNIT_SIZE * UNIT_SIZE * 4;
+        cached_walk_sprite(
+            gfx, cache, atlas_slot, frame,
+            || Atlas::Units.bytes(atlas_slot * len, len),
+            UNIT_SIZE, flip, pose_style_for_slot(slot),
+        )
     }
 
     pub fn national_building(&self, gfx: &Gfx, origin: usize, kind: BKind, fog: bool) -> Option<&ID2D1Bitmap> {
@@ -245,12 +359,33 @@ impl Art {
         art.get(index).and_then(Option::as_ref)
     }
 
+    fn mythology_unit_frame(&self, gfx: &Gfx, index: usize, flip: bool, frame: u8) -> Option<&ID2D1Bitmap> {
+        if frame == 0 {
+            return self.mythology_unit(index, flip);
+        }
+        let cache = if flip { &self.period.divine_walk_flip } else { &self.period.divine_walk };
+        let len = DIVINE_SIZE * DIVINE_SIZE * 4;
+        cached_walk_sprite(
+            gfx, cache, index, frame,
+            || Atlas::Divine.bytes(index * len, len),
+            DIVINE_SIZE, flip, MovePoseStyle::Foot,
+        )
+    }
+
     pub fn summoned_god(&self, god: u8, flip: bool) -> Option<&ID2D1Bitmap> {
         let index = god as usize;
         if index >= GOD_COUNT {
             return None;
         }
         self.mythology_unit(index + usize::from(index >= MAGE_SLOT), flip)
+    }
+
+    pub fn summoned_god_frame(&self, gfx: &Gfx, god: u8, flip: bool, frame: u8) -> Option<&ID2D1Bitmap> {
+        let index = god as usize;
+        if index >= GOD_COUNT {
+            return None;
+        }
+        self.mythology_unit_frame(gfx, index + usize::from(index >= MAGE_SLOT), flip, frame)
     }
 
     pub fn demon_sprite(&self, kind: DemonKind) -> Option<&ID2D1Bitmap> {
@@ -263,14 +398,26 @@ impl Art {
 
     /// The hero's homeland determines dress, independently of the summoning nation.
     pub fn period_hero(&self, gfx: &Gfx, hero: usize, flip: bool) -> Option<&ID2D1Bitmap> {
+        self.period_hero_frame(gfx, hero, flip, 0)
+    }
+
+    pub fn period_hero_frame(&self, gfx: &Gfx, hero: usize, flip: bool, frame: u8) -> Option<&ID2D1Bitmap> {
         if hero >= PORTRAIT_HERO_COUNT {
             let hero = HEROES.get(hero)?;
             if hero.ut == UT_WAR_ELEPHANT {
-                return self.national_unit(gfx, hero.culture, hero.ut, flip);
+                return self.national_unit_frame(gfx, hero.culture, hero.ut, flip, frame);
             }
-            return self.faction_unit(gfx, hero.culture, unit_slot(hero.ut), flip);
+            return self.faction_unit_frame(gfx, hero.culture, unit_slot(hero.ut), flip, frame);
         }
-        (if flip { &self.period.heroes_flip } else { &self.period.heroes }).get(hero).and_then(Option::as_ref)
+        if frame == 0 {
+            return (if flip { &self.period.heroes_flip } else { &self.period.heroes }).get(hero).and_then(Option::as_ref);
+        }
+        let style = HEROES.get(hero)
+            .map(|h| pose_style_for_kind(crate::world::udef(h.ut).class))
+            .unwrap_or(MovePoseStyle::Foot);
+        let (raw, size) = hero_pixels(hero);
+        let cache = if flip { &self.period.heroes_walk_flip } else { &self.period.heroes_walk };
+        cached_walk_sprite(gfx, cache, hero, frame, || Cow::Borrowed(raw), size, flip, style)
     }
 }
 
@@ -309,6 +456,37 @@ mod tests {
             if matches!(atlas, Atlas::Buildings | Atlas::Units) {
                 let distinct: std::collections::HashSet<_> = bytes.chunks_exact(cell).collect();
                 assert_eq!(distinct.len(), count);
+            }
+        }
+    }
+
+    #[test]
+    fn unit_walk_frames_are_valid_and_distinct() {
+        let cell = UNIT_SIZE * UNIT_SIZE * 4;
+        let units_raw = Atlas::Units.raw();
+        for (slot, style) in [(1, MovePoseStyle::Foot), (4, MovePoseStyle::Mounted), (7, MovePoseStyle::Ship)] {
+            let sprite = &units_raw[slot * cell..(slot + 1) * cell];
+            for flip in [false, true] {
+                let f0 = load_unit_walk_frame_bgra(sprite, UNIT_SIZE, flip, style, 0.0);
+                let f1 = load_unit_walk_frame_bgra(sprite, UNIT_SIZE, flip, style, 1.0);
+                let f2 = load_unit_walk_frame_bgra(sprite, UNIT_SIZE, flip, style, -1.0);
+                assert_ne!(f0, f1);
+                assert_ne!(f0, f2);
+                assert_ne!(f1, f2);
+                for frame in [&f1, &f2] {
+                    let mut opaque = 0usize;
+                    for &p in frame.iter() {
+                        let b = p & 255;
+                        let g = (p >> 8) & 255;
+                        let r = (p >> 16) & 255;
+                        let a = (p >> 24) & 255;
+                        assert!(b <= a && g <= a && r <= a);
+                        if a > 128 {
+                            opaque += 1;
+                        }
+                    }
+                    assert!(opaque > 100);
+                }
             }
         }
     }
