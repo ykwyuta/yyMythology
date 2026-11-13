@@ -211,7 +211,7 @@ pub struct Game {
     screen: Screen,
     mode: Mode,
     sel: Vec<Handle>,
-    sel_b: Option<Handle>,
+    sel_b: Vec<Handle>,
     groups: Vec<Vec<Handle>>,
     speed: u32,
     paused: bool,
@@ -249,6 +249,7 @@ pub struct Game {
     notice: Option<(String, f32)>,
     buttons: Vec<Button>,
     last_click: (f32, Option<Handle>),
+    last_barracks_click: Option<(f32, Handle)>,
     clock: f32,
     marker: Option<(V2, f32, bool)>,
     idle_cycle: usize,
@@ -363,7 +364,7 @@ impl Game {
             screen: Screen::Title,
             mode: Mode::Normal,
             sel: Vec::new(),
-            sel_b: None,
+            sel_b: Vec::new(),
             groups: vec![Vec::new(); 10],
             speed: 1,
             paused: false,
@@ -389,6 +390,7 @@ impl Game {
             notice: None,
             buttons: Vec::new(),
             last_click: (-10.0, None),
+            last_barracks_click: None,
             clock: 0.0,
             marker: None,
             idle_cycle: 0,
@@ -806,11 +808,10 @@ impl Game {
             let pl = self.world.player;
             let sel: Vec<Handle> = self.sel.iter().copied().filter(|&h| self.world.unit(h).map_or(false, |u| u.nation as usize == pl || self.seen(u.pos))).collect();
             self.sel = sel;
-            if let Some(b) = self.sel_b {
-                if self.world.bld(b).is_none() {
-                    self.sel_b = None;
-                }
-            }
+            let barracks_group = self.sel_b.len() > 1;
+            self.sel_b.retain(|&h| {
+                self.world.bld(h).is_some_and(|b| !barracks_group || b.nation as usize == pl)
+            });
         }
         if let Some((_, t)) = &mut self.notice {
             *t -= dt;
@@ -1040,9 +1041,13 @@ impl Game {
             }
             Ev::Down(b, x, y) => {
                 self.mouse = (x, y);
+                if b != 0 || self.mode != Mode::Normal || self.over_ui(x, y) {
+                    self.last_barracks_click = None;
+                }
                 match b {
                     0 => {
                         if let Some(a) = self.button_at(x, y) {
+                            self.last_barracks_click = None;
                             self.do_act(a);
                             return false;
                         }
@@ -1273,7 +1278,8 @@ impl Game {
                 u.selected = false;
             }
         }
-        self.sel_b = None;
+        self.sel_b.clear();
+        self.last_barracks_click = None;
     }
 
     fn set_sel(&mut self, hs: Vec<Handle>) {
@@ -1670,6 +1676,7 @@ impl Game {
     }
 
     fn select_release(&mut self, sx: f32, sy: f32, x: f32, y: f32) {
+        let last_barracks_click = self.last_barracks_click.take();
         let p = self.world.player;
         if (sx - x).abs() < 5.0 && (sy - y).abs() < 5.0 {
             let wp = self.screen_to_world(x, y);
@@ -1703,9 +1710,26 @@ impl Game {
                 } else {
                     self.set_sel(vec![h]);
                 }
-            } else if let Some(b) = self.bld_at(wp) {
+            } else if let Some(bh) = self.bld_at(wp) {
                 self.clear_sel();
-                self.sel_b = Some(b);
+                self.sel_b.push(bh);
+                let b = self.world.bld(bh).unwrap();
+                if b.kind == BKind::Barracks && b.nation as usize == p && b.done() {
+                    if last_barracks_click.is_some_and(|(time, h)| h == bh && time > self.clock - 0.35) {
+                        for (i, b) in self.world.blds.iter().enumerate() {
+                            if !b.alive || b.nation as usize != p || b.kind != BKind::Barracks || !b.done() {
+                                continue;
+                            }
+                            let h = self.world.bh(i);
+                            let (x, y) = self.world_to_screen(b.center());
+                            if h != bh && x >= 0.0 && x <= self.gfx.width as f32 && !self.over_ui(x, y) {
+                                self.sel_b.push(h);
+                            }
+                        }
+                    } else {
+                        self.last_barracks_click = Some((self.clock, bh));
+                    }
+                }
             } else {
                 self.clear_sel();
             }
@@ -1748,7 +1772,7 @@ impl Game {
                     }
                 }
             }
-            if let Some(bh) = self.sel_b {
+            for &bh in &self.sel_b {
                 if let Some(b) = self.world.bld_mut(bh) {
                     if b.nation as usize == pl && b.kind != BKind::Farm {
                         b.rally = Some(p);
@@ -2034,8 +2058,7 @@ impl Game {
                 self.rebuild_terrain();
                 self.screen = Screen::Title;
                 self.title_sel = None;
-                self.sel.clear();
-                self.sel_b = None;
+                self.clear_sel();
                 self.show_diplo = false;
                 self.show_help = false;
                 self.show_chron = false;
@@ -2047,10 +2070,23 @@ impl Game {
                 self.fit_title_camera();
             }
             Act::Train(k) => {
-                if let Some(bh) = self.sel_b {
-                    if let Err(e) = self.world.enqueue(bh, k) {
-                        self.notice(e);
+                let mut queued = 0;
+                let mut failure = None;
+                for &bh in &self.sel_b {
+                    if !self.world.bld(bh).is_some_and(|b| b.nation as usize == pl) {
+                        continue;
                     }
+                    match self.world.enqueue(bh, k) {
+                        Ok(()) => queued += 1,
+                        Err(e) => {
+                            failure.get_or_insert(e);
+                        }
+                    }
+                }
+                if self.sel_b.len() > 1 && queued > 0 {
+                    self.notice(&tf!("{} / {} 体の生産を予約", "Queued {} / {} units", "已预约生产 {} / {} 个单位", queued, self.sel_b.len()));
+                } else if let Some(e) = failure {
+                    self.notice(e);
                 }
             }
             Act::TrainPage => self.train_page += 1,
@@ -2067,12 +2103,12 @@ impl Game {
                 }
             }
             Act::Raze => {
-                if let Some(bh) = self.sel_b {
+                if let &[bh] = self.sel_b.as_slice() {
                     let i = bh.idx as usize;
                     match self.world.can_raze(i, pl) {
                         Ok(()) => {
                             self.world.raze_city(i, pl);
-                            self.sel_b = None;
+                            self.sel_b.clear();
                         }
                         Err(e) => self.notice(e),
                     }
@@ -2366,25 +2402,25 @@ impl Game {
                 self.notice(t!("ドラッグか対角の2点で植林区域を指定。既存の枠を選ぶと民を追加", "Drag or choose two corners. Click an existing forestry region to assign workers.", "拖动或点击两个对角划区，点击已有区域可增加林工。"));
             }
             Act::Repair => {
-                if let Some(h) = self.sel_b {
+                if let &[h] = self.sel_b.as_slice() {
                     if self.world.repair_building(pl, h) {
                         self.notice(t!("建物を補修しました", "Building repaired", "建筑已修复"));
                     }
                 }
             }
             Act::Demolish => {
-                if let Some(bh) = self.sel_b {
+                if let &[bh] = self.sel_b.as_slice() {
                     if let Some(b) = self.world.bld(bh) {
                         if b.nation as usize == pl && (!b.kind.city() || !b.done()) {
                             let i = bh.idx as usize;
                             self.world.remove_building(i);
-                            self.sel_b = None;
+                            self.sel_b.clear();
                         }
                     }
                 }
             }
             Act::ResumeBuild => {
-                if let Some(bh) = self.sel_b {
+                if let &[bh] = self.sel_b.as_slice() {
                     self.dispatch_worker_to_build(bh);
                 }
             }
@@ -2547,7 +2583,7 @@ impl Game {
                 g.ring(c.x, c.y + 0.08, dr, (2.2 * px).max(0.06), 24, [1.0, 0.90, 0.42, 0.90]);
             }
             crate::art::draw_world_building(g, b, nc, px);
-            let sel = self.sel_b == Some(wd.bh(bi));
+            let sel = self.sel_b.contains(&wd.bh(bi));
             if sel {
                 g.rect_outline(x0 - 0.32, y0 - 0.32, x1 + 0.32, y1 + 0.32, (2.2 * px).max(0.05), [1.0, 0.92, 0.55, 0.95]);
                 if let Some(r) = b.rally {
@@ -2870,7 +2906,7 @@ impl Game {
                     BKind::Port => 1.3,
                 };
                 let r = (z * mult).clamp(9.0, 68.0);
-                let sel = self.sel_b == Some(self.world.bh(bi));
+                let sel = self.sel_b.contains(&self.world.bh(bi));
                 let hp_frac = if b.done() && (b.hp < b.kind.max_hp() - 0.5 || sel) {
                     Some((b.hp / b.kind.max_hp()).clamp(0.0, 1.0))
                 } else {
@@ -3691,7 +3727,7 @@ impl Game {
         }
 
         // スマートフォン：選択や建設場所選びを指で解く ✕
-        if self.gfx.compact && (self.mode != Mode::Normal || !self.sel.is_empty() || self.sel_b.is_some()) {
+        if self.gfx.compact && (self.mode != Mode::Normal || !self.sel.is_empty() || !self.sel_b.is_empty()) {
             let tip = if self.mode != Mode::Normal { t!("取り消す", "Cancel", "取消") } else { t!("選択を解く", "Deselect", "取消选择") };
             self.add_button(ix + iw - 46.0, py + 10.0, ix + iw - 8.0, py + 48.0, "✕", "", 0, true, Act::Cancel, tip);
         }
@@ -3901,7 +3937,15 @@ impl Game {
             self.gfx.fill_rect(x, y + 106.0, x + bw, y + 114.0, [0.08, 0.06, 0.05, 0.95]);
             self.gfx.fill_rect(x + 1.0, y + 107.0, x + 1.0 + (bw - 2.0) * f, y + 113.0, [1.0 - f, 0.25 + 0.7 * f, 0.15, 1.0]);
             self.gfx.stroke_rect(x, y + 106.0, x + bw, y + 114.0, 1.0, [0.75, 0.62, 0.34, 0.9]);
-        } else if let Some(bh) = self.sel_b {
+        } else if self.sel_b.len() > 1 {
+            let queued: usize = self.sel_b.iter().filter_map(|&h| self.world.bld(h)).map(|b| b.queue.len()).sum();
+            let title = tf!("兵営 ×{}", "Barracks ×{}", "兵营 ×{}", self.sel_b.len());
+            let queue = tf!("訓練待ち {} 体", "{} units queued", "训练队列中有 {} 个单位", queued);
+            self.gfx.text_shadow(&title, x, y, wd, 28.0, Font::Big, tc);
+            self.gfx.text(&queue, x, y + 30.0, wd, 24.0, Font::Normal, tc);
+            self.gfx.text(t!("生産指示1回につき、各兵営で1体を予約します。", "Each production order queues one unit per barracks.", "每次生产指令在每座兵营预约一个单位。"),
+                x, y + 56.0, wd, 40.0, Font::Small, tc);
+        } else if let Some(&bh) = self.sel_b.first() {
             let b = self.world.bld(bh).unwrap();
             let n = &self.world.nations[b.nation as usize];
             let nc = n.color;
@@ -4223,13 +4267,13 @@ impl Game {
                 let (x0, y0, x1, y1) = pos(8);
                 self.add_button(x0, y0, x1, y1, t!("全軍を選択", "All soldiers", "选择全军"), &tf!("全{}体", "all {}", "全{}个", n_army), 'V' as u32, n_army > 0, Act::SelectAllMilitary, t!("自国のすべての軍事ユニットを選択する。", "Select all your soldiers.", "选择我国全部军事单位。"));
             }
-        } else if let Some(bh) = self.sel_b {
+        } else if let Some(&bh) = self.sel_b.first() {
             let b = self.world.bld(bh).unwrap();
             if b.nation as usize != pl {
                 return;
             }
             let (kind, done) = (b.kind, b.done());
-            if let Some(cost) = self.world.repair_cost(pl, bh) {
+            if let Some(cost) = self.world.repair_cost(pl, bh).filter(|_| self.sel_b.len() == 1) {
                 let (repair_x, _, _, _) = pos(1);
                 let (_, _, repair_right, _) = pos(2);
                 let label = tf!("補修（{}）", "Repair ({})", "修复（{}）", Self::cost_str(cost));
@@ -4293,7 +4337,7 @@ impl Game {
                     t!("近くの民をこの建物の建設へ派遣し、中断した建設を再開（または作業人数を追加）する（Q）", "Send nearby workers to build this, resuming a paused build or adding hands (Q)", "派附近的民来建造此建筑，继续中断的工程或增派人手（Q）"),
                 );
             }
-            if !kind.city() || !done {
+            if self.sel_b.len() == 1 && (!kind.city() || !done) {
                 let (x0, y0, x1, y1) = pos(8);
                 self.add_button(x0, y0, x1, y1, t!("取り壊す", "Demolish", "拆除"), "", 0, true, Act::Demolish, t!("この建物を取り壊す（Delete）", "Demolish this building (Delete)", "拆除此建筑（Delete）"));
             }
@@ -4461,9 +4505,9 @@ impl Game {
             "", 0, true, Act::RefreshCache, "");
         self.art.draw_inset_box(&self.gfx, x0 + 14.0, y0 + 46.0, x0 + pw - 14.0, y0 + ph - 14.0);
         let text = t!(
-            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。自動戦闘では射程内の敵建物にメテオを優先し、敵建物がなければ敵部隊にファイヤーボールを放つ。ファイヤーボールは詠唱なしの単体射撃。メテオは4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は陸地を巡回し、移動する攻撃範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。Spaceで一時停止、F4で交易、F5で記録。",
-            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Mages prioritize Meteor if an enemy building is in range. Otherwise they fire Fireball at enemy troops. Fireball is an instant single-target shot. Meteor takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn roam over land and attack every unit in their moving range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Space pauses, F4 opens trade and F5 opens saves.",
-            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。射程内有敌方建筑时，法师优先自动施放陨石术，否则向敌军发射火球。火球术无需吟唱，立即射击单个目标。陨石术需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神会在陆地巡逻，并攻击移动范围内的所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。空格暂停，F4 打开贸易，F5 打开存档。"
+            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。自動戦闘では射程内の敵建物にメテオを優先し、敵建物がなければ敵部隊にファイヤーボールを放つ。ファイヤーボールは詠唱なしの単体射撃。メテオは4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は陸地を巡回し、移動する攻撃範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。完成済みの兵営をダブルクリックすると、画面内の自軍の完成済み兵営をまとめて選び、一括生産できる。Spaceで一時停止、F4で交易、F5で記録。",
+            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Mages prioritize Meteor if an enemy building is in range. Otherwise they fire Fireball at enemy troops. Fireball is an instant single-target shot. Meteor takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn roam over land and attack every unit in their moving range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Double-click a completed barracks to select all your completed barracks on screen and queue units together. Space pauses, F4 opens trade and F5 opens saves.",
+            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。射程内有敌方建筑时，法师优先自动施放陨石术，否则向敌军发射火球。火球术无需吟唱，立即射击单个目标。陨石术需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神会在陆地巡逻，并攻击移动范围内的所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。双击已完工的兵营可选中屏幕内己方所有已完工的兵营并批量生产。空格暂停，F4 打开贸易，F5 打开存档。"
         );
         // 入りきらなければ小さい字にする
         let f = if self.gfx.measure_h(text, Font::Normal, pw - 48.0) > ph - 64.0 { Font::Small } else { Font::Normal };
