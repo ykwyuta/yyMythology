@@ -100,6 +100,7 @@ enum Act {
     Upgrade,
     Convert,
     Stop,
+    Explore,
     AttackMove,
     SelectAllWorkers,
     SelectAllMilitary,
@@ -633,6 +634,19 @@ impl Game {
             }
         }
         let pl = self.world.player;
+        let mut undiscovered = Vec::new();
+        if self.fog_active() && self.world.units.iter().any(|u| {
+            u.on_map() && u.nation as usize == pl && matches!(u.order, Order::Explore(_))
+        }) {
+            for b in &self.world.blds {
+                if b.alive && b.kind.city() && b.nation as usize != pl {
+                    let (x, y) = b.center().tile();
+                    if Map::inb(x, y) && self.fog[Map::idx(x, y)] == 0 {
+                        undiscovered.push((Map::idx(x, y), b.nation as usize));
+                    }
+                }
+            }
+        }
         for u in self.world.units.iter() {
             if u.on_map() && u.nation as usize == pl {
                 let (x, y) = u.pos.tile();
@@ -645,6 +659,16 @@ impl Game {
                 let r = if b.kind.city() { b.kind.radius() as i32 + 3 } else { 5 };
                 Self::reveal(&mut self.fog, x, y, r, 2);
             }
+        }
+        let mut discoveries = [0u32; NATIONS.len()];
+        for (tile, nation) in undiscovered {
+            if self.fog[tile] == 2 {
+                discoveries[nation] += 1;
+            }
+        }
+        for (nation, count) in discoveries.into_iter().enumerate().filter(|&(_, count)| count != 0) {
+            let name = crate::lang::tx(self.world.nations[nation].name);
+            self.world.push_msg(tf!("{}の城邑を{}か所発見した", "Discovered cities of {} ({})", "发现{}的城邑（{}处）", name, count), [0.7, 0.9, 1.0]);
         }
         let fog_c = [0.04, 0.05, 0.07];
         for (px, &f) in self.fog_px.iter_mut().zip(self.fog.iter()) {
@@ -796,7 +820,8 @@ impl Game {
             self.scroll(dt, focused);
             self.update_cmd_pause();
             self.world.prune_peace_asks();
-            if !self.paused && !self.cmd_hold() && self.world.game_over.is_none() && !self.show_help && !self.peace_pending() {
+            let running = !self.paused && !self.cmd_hold() && self.world.game_over.is_none() && !self.show_help && !self.peace_pending();
+            if running {
                 self.acc += dt * self.speed as f32;
                 let mut steps = 0;
                 while self.acc >= DT && steps < 16 {
@@ -814,7 +839,11 @@ impl Game {
                 }
             }
             self.autosave_tick();
+            let fog_ver = self.fog_ver;
             self.update_fog(dt);
+            if running && self.fog_ver != fog_ver && self.world.game_over.is_none() {
+                self.world.plan_exploration(&self.fog);
+            }
             self.update_tutorial(dt);
             let pl = self.world.player;
             let sel: Vec<Handle> = self.sel.iter().copied().filter(|&h| self.world.unit(h).map_or(false, |u| u.nation as usize == pl || self.seen(u.pos))).collect();
@@ -1165,6 +1194,10 @@ impl Game {
                 }
             }
             Ev::Key(k, down) => {
+                // 探索ボタンは中止と切り替わるので、押しっぱなしでは一度だけ反応する。
+                if k == 'X' as u32 && down && self.keys[k as usize] {
+                    return false;
+                }
                 if (k as usize) < 256 {
                     self.keys[k as usize] = down;
                 }
@@ -2196,6 +2229,11 @@ impl Game {
                 if let Some(e) = err {
                     self.notice(e);
                 }
+            }
+            Act::Explore => {
+                let hs = self.own_sel();
+                self.world.order_explore(&hs);
+                self.mode = Mode::Normal;
             }
             Act::Stop => {
                 for h in self.own_sel() {
@@ -3882,6 +3920,7 @@ impl Game {
         match u.order {
             Order::Cast { .. } => t!("詠唱中", "Casting", "施法中"),
             Order::Idle => t!("待機中", "Idle", "待命"),
+            Order::Explore(_) => t!("探索中", "Exploring", "探索中"),
             Order::Forestry { .. } => t!("植林担当", "Forestry", "负责植林"),
             Order::Move(_) => t!("移動中", "Moving", "移动中"),
             Order::AttackMove(_) => t!("進軍中", "Advancing", "进军中"),
@@ -4242,9 +4281,19 @@ impl Game {
             let any_worker = own.iter().any(|&h| self.world.unit(h).unwrap().kind == UnitKind::Worker);
             let any_mil = own.iter().any(|&h| self.world.unit(h).unwrap().kind.military());
             if any_worker && !(self.discard_pending && can_discard) {
-                let (_, _, plant_right, _) = pos(1);
+                let (_, _, plant_right, _) = pos(0);
                 self.add_button(x, utility_y, plant_right, utility_bottom, t!("植林区域", "Forestry region", "植林区域"), "", 0, true, Act::PlantForest,
                     t!("範囲を指定して民を配置。1マスごとに糧20で植え、30秒世話をすると森になります。既存の枠を選ぶと民を追加できます。", "Assign workers to a region. Each tile costs 20 food to plant and becomes forest after 30 seconds of tending. Click an existing region to assign more workers.", "划定区域并安排民。每格耗粮20，照料30秒后长成森林。点击已有区域可增加林工。"));
+            }
+            if !(self.discard_pending && can_discard) {
+                let (explore_x, _, explore_right, _) = pos(1);
+                if own.iter().all(|&h| self.world.unit(h).is_some_and(|u| matches!(u.order, Order::Explore(_)))) {
+                    self.add_button(explore_x, utility_y, explore_right, utility_bottom, t!("探索中止", "End scouting", "停止探索"), "", 'X' as u32, true, Act::Stop,
+                        t!("選択したユニットの探索を中止する。", "Stop the selected units from scouting.", "停止所选单位的探索。"));
+                } else {
+                    self.add_button(explore_x, utility_y, explore_right, utility_bottom, t!("探索", "Explore", "探索"), "", 'X' as u32, true, Act::Explore,
+                        t!("選択したユニットが手分けして未踏の地を探索し、他勢力の邑を発見する。", "Send the selected units to scout different areas of unexplored land and discover other factions’ towns.", "所选单位将分头探索未知区域，寻找其他势力的城邑。"));
+                }
             }
             let mut i = 0;
             if any_worker {
@@ -4606,9 +4655,9 @@ impl Game {
             "", 0, true, Act::RefreshCache, "");
         self.art.draw_inset_box(&self.gfx, x0 + 14.0, y0 + 46.0, x0 + pw - 14.0, y0 + ph - 14.0);
         let text = t!(
-            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。自動戦闘では射程内の敵建物にメテオを優先し、敵建物がなければ敵部隊にファイヤーボールを放つ。ファイヤーボールは詠唱なしの単体射撃。メテオは4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は陸地を巡回し、移動する攻撃範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n軍事ユニットを2体以上選択し、「軍団」（J）から編成。軍団番号で呼び出し、Aで進軍先を指定、Dで領内の迎撃・防衛集結を命じる。\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。完成済みの兵営をダブルクリックすると、画面内の自軍の完成済み兵営をまとめて選び、一括生産できる。Spaceで一時停止、F4で交易、F5で記録。",
-            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Mages prioritize Meteor if an enemy building is in range. Otherwise they fire Fireball at enemy troops. Fireball is an instant single-target shot. Meteor takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn roam over land and attack every unit in their moving range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nSelect at least two military units and open Corps (J) to form a corps. Recall it by its button, then press A and pick an advance destination, or press D to intercept intruders or rally for defense.\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Double-click a completed barracks to select all your completed barracks on screen and queue units together. Space pauses, F4 opens trade and F5 opens saves.",
-            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。射程内有敌方建筑时，法师优先自动施放陨石术，否则向敌军发射火球。火球术无需吟唱，立即射击单个目标。陨石术需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神会在陆地巡逻，并攻击移动范围内的所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n选中至少两个己方军事单位，从“军团”（J）组建。点击军团编号召回，按 A 指定进军目标，按 D 迎击入侵者或集结防守。\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。双击已完工的兵营可选中屏幕内己方所有已完工的兵营并批量生产。空格暂停，F4 打开贸易，F5 打开存档。"
+            "■ 勝利条件\n最後の一国となりユーラシアとアフリカを統一する。F2で外交を開き、宣戦してから敵の城邑を攻める。\n\n■ 神名辞典（F3）\n自国の神話の神々や天使を都に召喚できる。召喚には資源と、自国領内で選んだ民1人の生贄が必要。同じ神話を共有する全勢力で同時に3体まで。英霊を呼ぶには、自国領内の民を選んで H を押し、自分の文明・民族の英雄を選んで民を生贄に捧げる。\n\n■ 魔法使い\n兵営で訓練する。自動戦闘では射程内の敵建物にメテオを優先し、敵建物がなければ敵部隊にファイヤーボールを放つ。ファイヤーボールは詠唱なしの単体射撃。メテオは4秒詠唱し、射程内の敵建物のうち邑を優先して狙う。着弾地点の周囲にある敵建物にもダメージを与える。移動・停止でメテオの詠唱を中断できる。\n\n■ 魔神の危険域\n氷や砂漠の魔神は陸地を巡回し、移動する攻撃範囲内のユニットを勢力に関係なく攻撃する。撃破できないため、地図の円を避けるか、円の外へ退避する。\n\n■ 基本操作\n軍事ユニットを2体以上選択し、「軍団」（J）から編成。軍団番号で呼び出し、Aで進軍先を指定、Dで領内の迎撃・防衛集結を命じる。\n民で資源を集め、田や兵営を建てる。左クリックで選択、右クリックで移動・攻撃・採集。完成済みの兵営をダブルクリックすると、画面内の自軍の完成済み兵営をまとめて選び、一括生産できる。Spaceで一時停止、F4で交易、F5で記録。ユニットを選択して「探索」（X）を押すと、手分けして未踏の地を調べる。",
+            "■ Victory\nUnify Eurasia and Africa by becoming the last realm. Open diplomacy with F2 and declare war before attacking enemy cities.\n\n■ Divine Codex (F3)\nSummon gods and angels of your pantheon at your capital by spending resources and sacrificing one selected worker in your territory. The three-summon limit is shared by every realm of that pantheon. To summon a spirit of your civilization or people, select workers in your territory, press H and choose a hero to summon by sacrificing those workers.\n\n■ Mages\nTrain mages at a barracks. Mages prioritize Meteor if an enemy building is in range. Otherwise they fire Fireball at enemy troops. Fireball is an instant single-target shot. Meteor takes 4 seconds to cast, prioritizes enemy towns in range, and damages enemy buildings around the impact. Move or stop to cancel Meteor.\n\n■ Djinn hazards\nIce and Desert Djinn roam over land and attack every unit in their moving range, regardless of allegiance. They are invulnerable. Avoid the marked circles or retreat beyond their edge.\n\n■ Controls\nSelect at least two military units and open Corps (J) to form a corps. Recall it by its button, then press A and pick an advance destination, or press D to intercept intruders or rally for defense.\nUse workers to gather and build fields and barracks. Left-click to select and right-click to move, attack or gather. Double-click a completed barracks to select all your completed barracks on screen and queue units together. Space pauses, F4 opens trade and F5 opens saves. Select units and press Explore (X) to scout different areas of unexplored land.",
+            "■ 胜利\n成为最后一个国家以统一欧亚非。按 F2 打开外交，宣战后可进攻敌方城邑。\n\n■ 神名辞典（F3）\n消耗资源并献祭一名选中的己方领土内的民，在都城召唤所属神话的神灵和天使。同一神话的各国共享三个召唤名额。选择己方领土内的民，按 H 选择本方文明或民族的英雄，再献祭召唤英灵。\n\n■ 法师\n在兵营训练。射程内有敌方建筑时，法师优先自动施放陨石术，否则向敌军发射火球。火球术无需吟唱，立即射击单个目标。陨石术需吟唱4秒，优先瞄准射程内的敌方城邑，并伤害落点附近的敌方建筑。移动或停止可中断陨石术。\n\n■ 魔神危险区\n冰之魔神和沙漠魔神会在陆地巡逻，并攻击移动范围内的所有单位。魔神无法被击败，请避开地面圆圈或撤到圈外。\n\n■ 操作\n选中至少两个己方军事单位，从“军团”（J）组建。点击军团编号召回，按 A 指定进军目标，按 D 迎击入侵者或集结防守。\n用民采集资源、建造田地和兵营。左键选择，右键移动、攻击或采集。双击已完工的兵营可选中屏幕内己方所有已完工的兵营并批量生产。空格暂停，F4 打开贸易，F5 打开存档。选中单位后按“探索”（X），各单位会分头侦察未知区域。"
         );
         // 入りきらなければ小さい字にする
         let f = if self.gfx.measure_h(text, Font::Normal, pw - 48.0) > ph - 64.0 { Font::Small } else { Font::Normal };
