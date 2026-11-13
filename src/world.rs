@@ -19,6 +19,7 @@ pub use mythology::*;
 pub use magic::{Spell, METEOR_CAST_TIME, METEOR_RADIUS};
 use magic::METEOR_RANGE;
 mod save;
+mod exploration;
 mod units;
 mod conquest;
 mod naval;
@@ -273,6 +274,7 @@ impl Src {
 pub enum Order {
     Forestry { region: usize, target: Option<usize>, cursor: usize },
     Idle,
+    Explore(Option<V2>),
     Move(V2),
     AttackMove(V2),
     Attack(Target),
@@ -2852,6 +2854,8 @@ impl World {
                     u.hp = (u.hp + u.max_hp() * 0.01 * dt).min(u.max_hp());
                 }
             }
+            Order::Explore(Some(goal)) => self.update_explorer(i, goal, dt),
+            Order::Explore(None) => {}
             Order::Move(g) => {
                 if self.nav(i, g, 0.25, dt) {
                     self.units[i].order = Order::Idle;
